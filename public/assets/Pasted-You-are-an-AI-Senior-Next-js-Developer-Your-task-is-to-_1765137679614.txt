@@ -1,0 +1,476 @@
+You are an AI Senior Next.js Developer.
+Your task is to generate a complete Customer E-commerce Website using:
+
+Next.js (latest stable version – 2026 standards)
+
+App Router
+
+React Server Components
+
+Client Components only where needed
+
+Zustand for state management
+
+ShadCN UI for components
+
+Mock data only (JSON files or constants)
+
+fetch() only for API calls
+
+TypeScript
+
+SEO Best Practices
+
+Folder Architecture best practices
+
+Atomic component structure
+
+Your output must generate complete code files with the same theme as KSR Performance / Turbochargers website:
+🔴 Black + Red + Automotive Performance Theme
+Modern, bold, mechanical, minimal, clean.
+
+Do NOT use Axios.
+Do NOT use Redux.
+Do NOT use low-code shortcuts.
+
+🟥 MODULES TO BUILD (FULL CUSTOMER SITE)
+
+Build the full e-commerce experience with the following modules:
+
+1️⃣ Home Page (Hero + Product Highlights)
+
+Sections required:
+
+Hero banner carousel
+
+New arrivals
+
+Featured categories
+
+Top selling products
+
+Recommended for you
+
+Brand logos carousel
+
+Instagram / Social media section
+
+Blog previews
+
+Footer section
+
+2️⃣ Category + Subcategory Module
+
+Two-level hierarchy:
+
+Categories
+
+Subcategories inside each Category
+
+Pages:
+
+/categories
+/category/[slug]
+/category/[slug]/[subcategory]
+
+
+Each listing page must include:
+
+Filters:
+
+Price
+
+Brand
+
+Model
+
+Year
+
+Category
+
+Availability
+
+Sort options:
+
+Newest
+
+Price low → high
+
+Price high → low
+
+Popularity
+
+3️⃣ Product Detail Page (PDP)
+
+Include:
+
+Product images gallery
+
+Zoom mode
+
+Price
+
+Stock status
+
+Fitment Details
+
+Specifications
+
+Tabs:
+
+Description
+
+Specification
+
+Fitment
+
+Reviews
+
+Wishlist button
+
+Add to Cart
+
+Related products
+
+“People also bought”
+
+Use ShadCN components but with a black/red automotive theme.
+
+4️⃣ Cart Module
+
+Use Zustand store for:
+
+Add to cart
+
+Remove
+
+Update quantity
+
+Auto-calc totals
+
+Freight/delivery options
+
+UI pages:
+
+/cart
+
+
+Cart features:
+
+Item list
+
+Price summary
+
+Delivery options
+
+Discount code input
+
+Checkout CTA
+
+5️⃣ Checkout Module
+
+Includes:
+
+Customer info
+
+Shipping address
+
+Billing address
+
+Delivery options
+
+Payment summary
+
+“Place Order” button
+
+Mock order creation with:
+
+POST /api/orders (mock)
+
+6️⃣ Order Tracking Module
+
+User can check order status with:
+
+/order/[orderId]
+
+
+Show:
+
+Status
+
+Items
+
+Delivery timeline
+
+Tracking link
+
+Invoice (mock PDF link)
+
+7️⃣ Wishlist Module
+
+Using Zustand:
+
+Add/remove wishlist
+
+Sync to local storage
+
+Pages:
+
+/wishlist
+
+8️⃣ Search Module
+
+Advanced search bar with:
+
+Auto-suggestions
+
+Brands
+
+Category suggestions
+
+Recent searches
+
+Popular searches
+
+Search results page:
+
+/search?q=...
+
+9️⃣ Bulk Order Module (Unique Feature — MUST INCLUDE)
+
+This is the signature innovation of the project.
+
+Create:
+
+Page: /bulk-order
+Features:
+A. Bulk Entry Grid (Spreadsheet UI)
+
+Columns:
+
+SKU
+
+Quantity
+
+Fitment
+
+Notes
+
+Dynamic rows
+
+Auto-add row at bottom
+
+SKU auto-suggestions
+
+Real-time stock check
+
+Validation icons (success / warning / error)
+
+B. Upload CSV/XLSX
+
+Parse mock files locally
+
+Show preview table
+
+Detect invalid SKUs
+
+Allow user to fix issues in grid
+
+C. Paste-from-Clipboard Mode
+
+User can paste Excel data → auto-fill grid.
+
+D. Real-Time Validation
+
+For each row:
+
+Check if SKU exists
+
+Check stock > qty
+
+Check if dropship product
+
+Show error states
+
+E. Add All to Cart
+
+Call mock API:
+
+POST /api/bulk/validate
+POST /api/bulk/add-to-cart
+
+
+Split logic:
+
+If mixed dropship + normal → show modal
+
+If user accepts → add all
+
+1️⃣0️⃣ Brand Module
+
+Pages:
+
+/brands
+/brands/[brandSlug]
+
+
+Each brand page shows:
+
+Brand logo
+
+Brand description
+
+All products
+
+Filtering options
+
+1️⃣1️⃣ Blog Module
+
+Pages:
+
+/blog
+/blog/[slug]
+
+
+Show:
+
+Articles
+
+Images
+
+Tags
+
+Recommended posts
+
+1️⃣2️⃣ Static Pages
+
+Build with SEO:
+
+About
+
+Contact
+
+Privacy Policy
+
+Returns Policy
+
+Terms & Conditions
+
+1️⃣3️⃣ Social Media Integration
+
+Just add:
+
+Social icons
+
+Instagram feed (mock JSON)
+
+1️⃣4️⃣ Auto Currency Conversion
+
+Mock behavior:
+
+Show currency selector
+
+Convert using mock rates
+
+Store selection using Zustand
+
+1️⃣5️⃣ Shipping Integrations (Mock Only)
+
+Provide:
+
+DHL
+
+UPS
+
+FedEx
+
+Bring
+
+Posten
+
+Mock API:
+
+GET /api/shipping-rates?postalCode=...
+
+🟥 GLOBAL REQUIREMENTS
+✔ Use Next.js App Router
+✔ Server Components for data fetching
+✔ Client Components only for interaction-heavy parts
+✔ Zustand for cart, wishlist, currency, user session
+✔ Mock JSON data in /data folder
+✔ ShadCN UI with automotive theme
+✔ Responsive mobile-first layout
+✔ RTL support optional
+✔ SEO meta generator on every page
+✔ Image optimization using next/image
+✔ Absolute imports
+✔ Use layouts, templates & parallel routes correctly
+🗂 PROJECT STRUCTURE (REQUIRED)
+src/
+ ├─ app/
+ │   ├─ (home)/
+ │   ├─ category/
+ │   ├─ product/
+ │   ├─ cart/
+ │   ├─ checkout/
+ │   ├─ bulk-order/
+ │   ├─ blog/
+ │   ├─ brands/
+ │   ├─ order/
+ │   ├─ api/
+ │   │   ├─ bulk/
+ │   │   ├─ products/
+ │   │   ├─ cart/
+ │   │   ├─ orders/
+ │   │   ├─ shipping/
+ │   │   └─ search/
+ │   └─ layout.tsx
+ ├─ components/
+ ├─ stores/ (Zustand)
+ ├─ data/ (mock JSON)
+ ├─ lib/
+ ├─ hooks/
+ ├─ types/
+ └─ styles/
+
+🎨 THEME REQUIREMENTS
+
+Follow a KSR / automotive turbocharger aesthetic:
+
+Colors:
+
+Red (#e10600)
+
+Black (#000000)
+
+White (#ffffff)
+
+Dark grey (#1a1a1a)
+
+Fonts: bold, strong, fast
+
+Product cards must feel mechanical & sporty
+
+Hero banners must look like motorsport brands
+
+🧪 DELIVERABLES
+
+The AI Agent must output:
+
+All components
+
+All pages
+
+All mock APIs
+
+Zustand stores
+
+Mock JSON data
+
+Full working layout
+
+Dark/Red automotive design
+
+SEO metadata
+
+TypeScript types
