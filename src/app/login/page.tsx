@@ -8,46 +8,74 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
-import { useUserStore } from "@/stores/useUserStore";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const login = useUserStore((s) => s.login);
+  const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    setTimeout(() => {
-      setIsLoading(false);
-      login();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
+    try {
+      await login(email, password);
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
         className: "bg-green-600 text-white border-none",
       });
-
       router.push("/");
-    }, 1500);
+    } catch (error: any) {
+      setError(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    setTimeout(() => {
-      setIsLoading(false);
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const fullname = formData.get("fullname") as string;
+    const username = formData.get("username") as string;
+    const email = formData.get("reg-email") as string;
+    const password = formData.get("reg-password") as string;
+    const phone = formData.get("phone") as string;
+
+    try {
+      await register({
+        fullname,
+        username,
+        email,
+        password,
+        phone,
+      });
       toast({
-        title: "Account Created",
-        description: "Please check your email to verify your account.",
+        title: "Account Created!",
+        description: "Your account has been created successfully.",
         className: "bg-green-600 text-white border-none",
       });
-    }, 1500);
+      router.push("/");
+    } catch (error: any) {
+      setError(error.message || "Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -59,7 +87,7 @@ export default function LoginPage() {
               My <span className="text-primary">Account</span>
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your email below to login to your account
+              Enter your details below to login or create your account
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -69,18 +97,46 @@ export default function LoginPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="m@example.com" required className="bg-background/50" />
+                    <Input 
+                      id="email" 
+                      name="email"
+                      type="email" 
+                      placeholder="m@example.com" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" required className="bg-background/50" />
+                    <Input 
+                      id="password" 
+                      name="password"
+                      type="password" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
                   </div>
                   <Button className="w-full font-bold uppercase tracking-wider" type="submit" disabled={isLoading}>
-                    {isLoading ? "Logging in..." : "Login"}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Logging in...
+                      </>
+                    ) : (
+                      "Login"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -88,19 +144,73 @@ export default function LoginPage() {
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
+                    <Label htmlFor="fullname">Full Name</Label>
+                    <Input 
+                      id="fullname" 
+                      name="fullname"
+                      type="text" 
+                      placeholder="John Doe" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input 
+                      id="username" 
+                      name="username"
+                      type="text" 
+                      placeholder="johndoe" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="reg-email">Email</Label>
-                    <Input id="reg-email" type="email" placeholder="m@example.com" required className="bg-background/50" />
+                    <Input 
+                      id="reg-email" 
+                      name="reg-email"
+                      type="email" 
+                      placeholder="m@example.com" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input 
+                      id="phone" 
+                      name="phone"
+                      type="tel" 
+                      placeholder="+1234567890" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-password">Password</Label>
-                    <Input id="reg-password" type="password" required className="bg-background/50" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input id="confirm-password" type="password" required className="bg-background/50" />
+                    <Input 
+                      id="reg-password" 
+                      name="reg-password"
+                      type="password" 
+                      required 
+                      className="bg-background/50" 
+                      disabled={isLoading}
+                    />
                   </div>
                   <Button className="w-full font-bold uppercase tracking-wider" type="submit" disabled={isLoading}>
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      "Create Account"
+                    )}
                   </Button>
                 </form>
               </TabsContent>

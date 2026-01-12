@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +22,9 @@ interface BulkRow {
 }
 
 export default function BulkOrder() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { data: session } = useSession();
   const [rows, setRows] = useState<BulkRow[]>([
     { id: '1', sku: '', qty: 1, status: 'idle' },
     { id: '2', sku: '', qty: 1, status: 'idle' },
@@ -80,6 +85,11 @@ export default function BulkOrder() {
   };
 
   const addAllToCart = () => {
+    if (!session?.accessToken) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+      return;
+    }
+
     const validRows = rows.filter(r => r.status === 'valid' && r.product);
     
     if (validRows.length === 0) {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { products } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +14,8 @@ import Layout from "@/components/Layout";
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const { data: session } = useSession();
   const slug = params.slug as string;
   const product = products.find(p => p.slug === slug);
   
@@ -25,7 +28,7 @@ export default function ProductPage() {
       <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-4xl font-bold mb-4">Product Not Found</h1>
-          <p className="text-muted-foreground mb-8">The product you're looking for doesn't exist.</p>
+          <p className="text-muted-foreground mb-8">The product you&apos;re looking for doesn&apos;t exist.</p>
           <Button onClick={() => router.push('/categories')}>Browse Products</Button>
         </div>
       </Layout>
@@ -33,12 +36,26 @@ export default function ProductPage() {
   }
 
   const handleAddToCart = () => {
+    if (!session?.accessToken) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+      return;
+    }
+
     addToCart(product);
     toast({
       title: "Added to Cart",
       description: `${product.name} has been added to your cart.`,
       className: "bg-green-600 text-white border-none",
     });
+  };
+
+  const handleWishlist = () => {
+    if (!session?.accessToken) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+      return;
+    }
+
+    addToWishlist(product);
   };
 
   return (
@@ -108,7 +125,7 @@ export default function ProductPage() {
                 size="lg" 
                 variant="outline"
                 className="h-14 rounded-none border-border hover:border-primary hover:text-primary transition-colors"
-                onClick={() => addToWishlist(product)}
+                onClick={handleWishlist}
               >
                 <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current text-primary' : ''}`} />
               </Button>

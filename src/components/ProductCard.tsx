@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ShoppingCart, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,6 +15,9 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { data: session } = useSession();
   const addToCart = useCartStore((state) => state.addItem);
   const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist } = useWishlistStore();
   const { toast } = useToast();
@@ -22,6 +27,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!session?.accessToken) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+      return;
+    }
+
     addToCart(product);
     toast({
       title: "Added to Cart",
@@ -33,6 +44,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!session?.accessToken) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+      return;
+    }
+
     if (inWishlist) {
       removeFromWishlist(product.id);
     } else {

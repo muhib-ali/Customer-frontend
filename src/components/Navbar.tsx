@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useCartStore } from "@/stores/useCartStore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
-import { useUserStore } from "@/stores/useUserStore";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import {
@@ -24,11 +24,12 @@ export default function Navbar() {
   const pathname = usePathname();
   const cartItems = useCartStore((state) => state.items);
   const wishlistItems = useWishlistStore((state) => state.items);
-  const { isLoggedIn, logout } = useUserStore();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const isLoggedIn = !!user;
 
   useEffect(() => {
     setMounted(true);
@@ -141,7 +142,7 @@ export default function Navbar() {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">My Account</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        user@example.com
+                        {user?.email || "user@example.com"}
                       </p>
                     </div>
                   </DropdownMenuLabel>
