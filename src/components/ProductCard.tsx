@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Product, useCartStore } from "@/stores/useCartStore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useToast } from "@/hooks/use-toast";
+import { useAddToWishlist, useWishlist, useRemoveFromWishlist } from "@/services/products";
 
 interface ProductCardProps {
   product: Product;
@@ -19,10 +20,16 @@ export default function ProductCard({ product }: ProductCardProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const addToCart = useCartStore((state) => state.addItem);
-  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist } = useWishlistStore();
+  const { addItem: addToWishlistStore, isInWishlist, removeItem: removeFromWishlist } = useWishlistStore();
   const { toast } = useToast();
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+  const { data: wishlistData } = useWishlist();
   
-  const inWishlist = isInWishlist(product.id);
+  // Check if product is in wishlist (local store for guests, API data for authenticated users)
+  const inWishlist = session?.accessToken 
+    ? wishlistData?.data?.some(item => item.product_id === product.id)
+    : isInWishlist(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -41,7 +48,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     });
   };
 
-  const handleWishlist = (e: React.MouseEvent) => {
+  const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -51,14 +58,77 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     if (inWishlist) {
-      removeFromWishlist(product.id);
+      try {
+        await removeFromWishlistMutation.mutateAsync(product.id);
+        
+        // Show success message based on response
+        if (removeFromWishlistMutation.data?.status) {
+          toast({
+            title: "Removed from Wishlist",
+            description: removeFromWishlistMutation.data.message || "Product removed from your wishlist.",
+            className: "bg-orange-600 text-white border-none",
+          });
+          
+          // Also remove from local store for immediate UI feedback
+          removeFromWishlist(product.id);
+        }
+      } catch (error: any) {
+        console.error('Wishlist remove error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 404) {
+          toast({
+            title: "Product Not Found",
+            description: "This product was not found in your wishlist.",
+            className: "bg-yellow-600 text-white border-none",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to remove product from wishlist. Please try again.",
+            className: "bg-red-600 text-white border-none",
+          });
+        }
+      }
     } else {
-      addToWishlist(product);
-      toast({
-        title: "Added to Wishlist",
-        description: "Product saved for later.",
-        className: "bg-primary text-white border-none",
-      });
+      try {
+        await addToWishlistMutation.mutateAsync(product.id);
+        
+        // Show success message based on response
+        if (addToWishlistMutation.data?.status) {
+          toast({
+            title: "Added to Wishlist",
+            description: addToWishlistMutation.data.message || "Product saved for later.",
+            className: "bg-primary text-white border-none",
+          });
+          
+          // Also add to local store for immediate UI feedback
+          addToWishlistStore(product);
+        }
+      } catch (error: any) {
+        console.error('Wishlist error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 400) {
+          toast({
+            title: "Already in Wishlist",
+            description: "This product is already in your wishlist.",
+            className: "bg-yellow-600 text-white border-none",
+          });
+        } else if (error.response?.status === 404) {
+          toast({
+            title: "Product Not Found",
+            description: "This product could not be found.",
+            className: "bg-red-600 text-white border-none",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to add product to wishlist. Please try again.",
+            className: "bg-red-600 text-white border-none",
+          });
+        }
+      }
     }
   };
 

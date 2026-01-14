@@ -10,6 +10,7 @@ import Layout from "@/components/Layout";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Category, useFeaturedCategories } from "@/services/categories";
+import { Product, useNewArrivals } from "@/services/products";
 
 function HomeContent() {
   const { user, logout } = useAuth();
@@ -21,6 +22,30 @@ function HomeContent() {
     isLoading: loading,
     isError,
   } = useFeaturedCategories();
+
+  // Convert API product to ProductCard format
+  const convertApiProductToCard = (apiProduct: Product) => ({
+    id: apiProduct.id,
+    sku: apiProduct.sku,
+    name: apiProduct.title,
+    slug: apiProduct.id, // Use product ID as slug for navigation
+    price: apiProduct.price,
+    image: apiProduct.product_img_url,
+    category: apiProduct.category_id,
+    brand: apiProduct.brand_id,
+    stock: apiProduct.stock_quantity,
+    description: apiProduct.description,
+    specs: {},
+    fitment: [],
+    isNew: true,
+    isBestSeller: false,
+  });
+
+  const {
+    data: newArrivalsResponse,
+    isLoading: newArrivalsLoading,
+    isError: newArrivalsError,
+  } = useNewArrivals();
 
   // Dynamic icon mapping for categories
   const getCategoryIcon = (categoryName: string) => {
@@ -255,9 +280,33 @@ function HomeContent() {
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {newArrivals.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {newArrivalsLoading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="bg-card border border-border rounded-lg p-4">
+                  <div className="w-full h-48 bg-muted animate-pulse rounded-md mb-4"></div>
+                  <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
+                  <div className="h-4 bg-muted animate-pulse rounded w-20 mb-4"></div>
+                  <div className="h-8 bg-muted animate-pulse rounded"></div>
+                </div>
+              ))
+            ) : newArrivalsError ? (
+              // Error state
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="bg-card border border-border rounded-lg p-4">
+                  <div className="w-full h-48 bg-muted/20 rounded-md mb-4 flex items-center justify-center">
+                    <Package className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                  <div className="h-6 bg-muted rounded mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-20 mb-4"></div>
+                  <div className="h-8 bg-muted rounded"></div>
+                </div>
+              ))
+            ) : (
+              (newArrivalsResponse?.data ?? []).slice(0, 4).map((product: Product) => (
+                <ProductCard key={product.sku} product={convertApiProductToCard(product)} />
+              ))
+            )}
           </div>
         </section>
 

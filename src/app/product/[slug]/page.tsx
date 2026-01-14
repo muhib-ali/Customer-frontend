@@ -2,14 +2,15 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { products } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCartStore } from "@/stores/useCartStore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
-import { ShoppingCart, Heart, Truck, ShieldCheck, RefreshCw } from "lucide-react";
+import { ShoppingCart, Heart, Truck, ShieldCheck, RefreshCw, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { useProductDetails, Product, useAddToWishlist, useWishlist, useRemoveFromWishlist } from "@/services/products";
 
 export default function ProductPage() {
   const params = useParams();
@@ -17,23 +18,113 @@ export default function ProductPage() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const slug = params.slug as string;
-  const product = products.find(p => p.slug === slug);
   
-  const addToCart = useCartStore((state) => state.addItem);
-  const { addItem: addToWishlist, isInWishlist } = useWishlistStore();
-  const { toast } = useToast();
+  const {
+    data: productResponse,
+    isLoading,
+    isError,
+  } = useProductDetails(slug);
 
-  if (!product) {
+  const { addItem: addToCart } = useCartStore();
+  const { addItem: addToWishlistStore, isInWishlist, removeItem: removeFromWishlist } = useWishlistStore();
+  const { toast } = useToast();
+  const [selectedMedia, setSelectedMedia] = useState<string>("");
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+  const { data: wishlistData } = useWishlist();
+
+  // Convert API product to store format
+  const convertToStoreProduct = (apiProduct: Product) => ({
+    id: apiProduct.id,
+    sku: apiProduct.sku,
+    name: apiProduct.title,
+    slug: apiProduct.id,
+    price: apiProduct.price,
+    image: apiProduct.product_img_url,
+    images: [
+      apiProduct.product_img_url,
+      apiProduct.product_video_url,
+    ],
+    category: apiProduct.category_id,
+    brand: apiProduct.brand_id,
+    stock: apiProduct.stock_quantity,
+    description: apiProduct.description,
+    specs: {
+      'Price': `$${apiProduct.price}`,
+      'SKU': apiProduct.sku,
+      'Stock': apiProduct.stock_quantity.toString(),
+      'Weight': `${apiProduct.weight}kg`,
+      'Dimensions': `${apiProduct.length} x ${apiProduct.width} x ${apiProduct.height}cm`,
+      'Discount': `${apiProduct.discount}%`,
+      'Currency': apiProduct.currency,
+    },
+    fitment: [],
+    isNew: true,
+    isBestSeller: false,
+  });
+
+  // Set initial selected media
+  useEffect(() => {
+    if (productResponse?.data) {
+      const apiProduct = productResponse.data;
+      const mediaArray = [apiProduct.product_img_url, apiProduct.product_video_url].filter(Boolean);
+      if (mediaArray.length > 0) {
+        setSelectedMedia(mediaArray[0]);
+      }
+    }
+  }, [productResponse?.data]);
+
+  const handleMediaClick = (mediaUrl: string) => {
+    setSelectedMedia(mediaUrl);
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-4">
+              <div className="aspect-square bg-muted animate-pulse rounded-lg"></div>
+              <div className="grid grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="aspect-square bg-muted animate-pulse rounded-lg"></div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-8 bg-muted animate-pulse rounded"></div>
+              <div className="h-12 bg-muted animate-pulse rounded"></div>
+              <div className="h-6 bg-muted animate-pulse rounded w-32"></div>
+              <div className="h-4 bg-muted animate-pulse rounded"></div>
+              <div className="h-14 bg-muted animate-pulse rounded"></div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (isError || !productResponse?.data) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
+          <div className="mb-8">
+            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          </div>
           <h1 className="text-4xl font-bold mb-4">Product Not Found</h1>
-          <p className="text-muted-foreground mb-8">The product you&apos;re looking for doesn&apos;t exist.</p>
+          <p className="text-muted-foreground mb-8">The product you&apos;re looking for doesn&apos;t exist or couldn&apos;t be loaded.</p>
           <Button onClick={() => router.push('/categories')}>Browse Products</Button>
         </div>
       </Layout>
     );
   }
+
+  const product = convertToStoreProduct(productResponse.data);
+
+  // Check if product is in wishlist (local store for guests, API data for authenticated users)
+  const inWishlist = session?.accessToken 
+    ? wishlistData?.data?.some(item => item.product_id === product.id)
+    : isInWishlist(product.id);
 
   const handleAddToCart = () => {
     if (!session?.accessToken) {
@@ -49,13 +140,85 @@ export default function ProductPage() {
     });
   };
 
-  const handleWishlist = () => {
+  const handleWishlist = async () => {
     if (!session?.accessToken) {
       router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
       return;
     }
 
-    addToWishlist(product);
+    if (inWishlist) {
+      try {
+        await removeFromWishlistMutation.mutateAsync(product.id);
+        
+        // Show success message based on response
+        if (removeFromWishlistMutation.data?.status) {
+          toast({
+            title: "Removed from Wishlist",
+            description: removeFromWishlistMutation.data.message || "Product removed from your wishlist.",
+            className: "bg-orange-600 text-white border-none",
+          });
+          
+          // Also remove from local store for immediate UI feedback
+          removeFromWishlist(product.id);
+        }
+      } catch (error: any) {
+        console.error('Wishlist remove error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 404) {
+          toast({
+            title: "Product Not Found",
+            description: "This product was not found in your wishlist.",
+            className: "bg-yellow-600 text-white border-none",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to remove product from wishlist. Please try again.",
+            className: "bg-red-600 text-white border-none",
+          });
+        }
+      }
+    } else {
+      try {
+        await addToWishlistMutation.mutateAsync(product.id);
+        
+        // Show success message based on response
+        if (addToWishlistMutation.data?.status) {
+          toast({
+            title: "Added to Wishlist",
+            description: addToWishlistMutation.data.message || "Product has been added to your wishlist.",
+            className: "bg-green-600 text-white border-none",
+          });
+          
+          // Also add to local store for immediate UI feedback
+          addToWishlistStore(product);
+        }
+      } catch (error: any) {
+        console.error('Wishlist error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 400) {
+          toast({
+            title: "Already in Wishlist",
+            description: "This product is already in your wishlist.",
+            className: "bg-yellow-600 text-white border-none",
+          });
+        } else if (error.response?.status === 404) {
+          toast({
+            title: "Product Not Found",
+            description: "This product could not be found.",
+            className: "bg-red-600 text-white border-none",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to add product to wishlist. Please try again.",
+            className: "bg-red-600 text-white border-none",
+          });
+        }
+      }
+    }
   };
 
   return (
@@ -64,11 +227,22 @@ export default function ProductPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           <div className="space-y-4">
             <div className="aspect-square bg-muted/20 border border-border p-8 flex items-center justify-center relative overflow-hidden group">
-              <img 
-                src={product.image} 
-                alt={product.name} 
-                className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
-              />
+              {selectedMedia?.endsWith('.mp4') ? (
+                <video 
+                  src={selectedMedia} 
+                  autoPlay 
+                  muted 
+                  loop 
+                  controls
+                  className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                />
+              ) : (
+                <img 
+                  src={selectedMedia || product.image} 
+                  alt={product.name} 
+                  className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                />
+              )}
               {product.isNew && (
                 <div className="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-wider">
                   New Arrival
@@ -76,9 +250,25 @@ export default function ProductPage() {
               )}
             </div>
             <div className="grid grid-cols-4 gap-4">
-              {[product.image, product.image, product.image, product.image].map((img, i) => (
-                <div key={i} className="aspect-square bg-muted/20 border border-border p-2 cursor-pointer hover:border-primary transition-colors">
-                  <img src={img} alt="Thumbnail" className="w-full h-full object-contain opacity-70 hover:opacity-100" />
+              {product.images?.map((media, i) => (
+                <div 
+                  key={i} 
+                  className={`aspect-square bg-muted/20 border p-2 cursor-pointer transition-colors ${
+                    selectedMedia === media 
+                      ? 'border-primary' 
+                      : 'border-border hover:border-primary'
+                  }`}
+                  onClick={() => handleMediaClick(media)}
+                >
+                  {media.endsWith('.mp4') ? (
+                    <video 
+                      src={media} 
+                      muted 
+                      className="w-full h-full object-contain opacity-70 hover:opacity-100"
+                    />
+                  ) : (
+                    <img src={media} alt="Thumbnail" className="w-full h-full object-contain opacity-70 hover:opacity-100" />
+                  )}
                 </div>
               ))}
             </div>
@@ -127,7 +317,7 @@ export default function ProductPage() {
                 className="h-14 rounded-none border-border hover:border-primary hover:text-primary transition-colors"
                 onClick={handleWishlist}
               >
-                <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current text-primary' : ''}`} />
+                <Heart className={`h-5 w-5 ${inWishlist ? 'fill-current text-primary' : ''}`} />
               </Button>
             </div>
 
