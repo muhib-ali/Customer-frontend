@@ -12,8 +12,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/categories/:path*',
-        destination: 'http://localhost:3002/categories/:path*',
+        source: '/backend/:path*',
+        destination: 'http://localhost:3002/:path*',
       },
     ];
   },

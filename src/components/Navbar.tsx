@@ -148,7 +148,7 @@ export default function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/account" className="flex w-full items-center cursor-pointer">
+                    <Link href="/profile" className="flex w-full items-center cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Profile Settings</span>
                     </Link>
