@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/categories/:path*',
+        destination: 'http://localhost:3002/categories/:path*',
+      },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (!dev) {
       config.cache = false;

@@ -2,18 +2,118 @@
 
 import Hero from "@/components/Hero";
 import ProductCard from "@/components/ProductCard";
-import { products, categories, brands } from "@/data/mockData";
+import { products } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, Instagram, Truck, ShieldCheck, RefreshCw, Headphones, LogOut } from "lucide-react";
+import { ArrowRight, Instagram, Truck, ShieldCheck, RefreshCw, Headphones, LogOut, Monitor, Package, Shirt, Home as HomeIcon, Smartphone, Laptop, Watch, Camera, Gamepad2, Headphones as HeadphonesIcon, Cpu, Zap, Settings, Wrench, Hammer, Car, Baby, Book, Music, Dumbbell, Coffee } from "lucide-react";
 import Layout from "@/components/Layout";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { Category, useFeaturedCategories } from "@/services/categories";
 
 function HomeContent() {
   const { user, logout } = useAuth();
   const newArrivals = products.filter(p => p.isNew).slice(0, 4);
   const bestSellers = products.filter(p => p.isBestSeller).slice(0, 2);
+
+  const {
+    data: featuredCategoriesResponse,
+    isLoading: loading,
+    isError,
+  } = useFeaturedCategories();
+
+  // Dynamic icon mapping for categories
+  const getCategoryIcon = (categoryName: string) => {
+    const name = categoryName.toLowerCase();
+    
+    // Comprehensive icon mapping
+    const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+      // Electronics
+      'electronics': Monitor,
+      'phones': Smartphone,
+      'smartphones': Smartphone,
+      'laptops': Laptop,
+      'computers': Monitor,
+      'cameras': Camera,
+      'watches': Watch,
+      'gaming': Gamepad2,
+      'headphones': HeadphonesIcon,
+      'audio': HeadphonesIcon,
+      'cpu': Cpu,
+      'computer': Monitor,
+      
+      // Fashion & Clothing
+      'fashion': Shirt,
+      'clothing': Shirt,
+      'shirts': Shirt,
+      'apparel': Shirt,
+      'wearables': Watch,
+      'accessories': Package,
+      'jewelry': Package,
+      'bags': Package,
+      
+      // Home & Garden
+      'home': HomeIcon,
+      'furniture': HomeIcon,
+      'garden': HomeIcon,
+      'kitchen': HomeIcon,
+      'decor': HomeIcon,
+      'appliances': Zap,
+      
+      // Sports & Fitness
+      'sports': Dumbbell,
+      'fitness': Dumbbell,
+      'gym': Dumbbell,
+      'exercise': Dumbbell,
+      'outdoor': Car,
+      
+      // Tools & Hardware
+      'tools': Hammer,
+      'hardware': Wrench,
+      'diy': Hammer,
+      'repair': Wrench,
+      
+      // Baby & Kids
+      'baby': Baby,
+      'kids': Baby,
+      'toys': Gamepad2,
+      
+      // Books & Media
+      'books': Book,
+      'media': Book,
+      'education': Book,
+      'music': Music,
+      'entertainment': Gamepad2,
+      
+      // Food & Beverage
+      'food': Coffee,
+      'coffee': Coffee,
+      'beverage': Coffee,
+      'drinks': Coffee,
+      
+      // General fallbacks
+      'general': Package,
+      'miscellaneous': Package,
+      'other': Package,
+      'default': Package,
+    };
+    
+    // Try exact match first
+    if (iconMap[name]) {
+      const IconComponent = iconMap[name];
+      return <IconComponent className="h-8 w-8 text-primary" />;
+    }
+    
+    // Try partial match (contains)
+    for (const [key, IconComponent] of Object.entries(iconMap)) {
+      if (name.includes(key)) {
+        return <IconComponent className="h-8 w-8 text-primary" />;
+      }
+    }
+    
+    // Fallback to Package icon
+    return <Package className="h-8 w-8 text-primary" />;
+  };
 
   return (
     <Layout>
@@ -91,24 +191,59 @@ function HomeContent() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {categories.slice(0, 4).map((cat) => (
-              <div key={cat.id} className="flex gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-lg transition-all group">
-                 <div className="w-24 h-24 bg-muted/20 rounded-md overflow-hidden flex-shrink-0">
-                   <img src={cat.image} alt={cat.name} className="w-full h-full object-contain" />
-                 </div>
-                 <div className="flex flex-col justify-between items-start flex-grow">
-                   <div>
-                     <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1">{cat.name}</h3>
-                     <span className="text-xs text-muted-foreground">50+ Products</span>
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg">
+                  <div className="w-24 h-24 bg-muted animate-pulse rounded-md"></div>
+                  <div className="flex flex-col justify-between flex-grow">
+                    <div>
+                      <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
+                      <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
+                    </div>
+                    <div className="h-8 bg-muted animate-pulse rounded w-20"></div>
+                  </div>
+                </div>
+              ))
+            ) : isError ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg">
+                  <div className="w-24 h-24 bg-muted/20 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    <Package className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-between items-start flex-grow">
+                    <div>
+                      <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1">Category</h3>
+                      <span className="text-xs text-muted-foreground">0 Products</span>
+                    </div>
+                    <Button size="sm" disabled className="h-8 text-xs font-bold uppercase rounded-sm bg-primary text-white hover:bg-primary/90">
+                      Shop Now
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              (featuredCategoriesResponse?.data ?? []).map((cat: Category) => (
+                <div key={cat.id} className="flex gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                   <div className="w-24 h-24 bg-muted/20 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-300">
+                     <div className="transition-transform duration-300 group-hover:scale-110">
+                       {getCategoryIcon(cat.name)}
+                     </div>
                    </div>
-                   <Link href={`/category/${cat.slug}`}>
-                     <Button size="sm" className="h-8 text-xs font-bold uppercase rounded-sm bg-primary text-white hover:bg-primary/90">
-                       Shop Now
-                     </Button>
-                   </Link>
-                 </div>
-              </div>
-            ))}
+                   <div className="flex flex-col justify-between items-start flex-grow">
+                     <div>
+                       <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1 group-hover:text-primary transition-colors duration-300">{cat.name}</h3>
+                       <span className="text-xs text-muted-foreground group-hover:text-primary/80 transition-colors duration-300">{cat.productCount} Products</span>
+                     </div>
+                     <Link href={`/category/${cat.id}`}>
+                       <Button size="sm" className="h-8 text-xs font-bold uppercase rounded-sm bg-primary text-white hover:bg-primary/90 hover:scale-105 transition-all duration-300">
+                         Shop Now
+                       </Button>
+                     </Link>
+                   </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
