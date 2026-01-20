@@ -2,7 +2,6 @@
 
 import Hero from "@/components/Hero";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Instagram, Truck, ShieldCheck, RefreshCw, Headphones, LogOut, Monitor, Package, Shirt, Home as HomeIcon, Smartphone, Laptop, Watch, Camera, Gamepad2, Headphones as HeadphonesIcon, Cpu, Zap, Settings, Wrench, Hammer, Car, Baby, Book, Music, Dumbbell, Coffee } from "lucide-react";
@@ -10,17 +9,31 @@ import Layout from "@/components/Layout";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Category, useFeaturedCategories } from "@/services/categories";
+import { useNewArrivals } from "@/services/products/new-arrivals";
+import { useBestProducts } from "@/services/best-products";
 
 function HomeContent() {
   const { user, logout } = useAuth();
-  const newArrivals = products.filter(p => p.isNew).slice(0, 4);
-  const bestSellers = products.filter(p => p.isBestSeller).slice(0, 2);
 
   const {
     data: featuredCategoriesResponse,
     isLoading: loading,
     isError,
   } = useFeaturedCategories();
+
+  const {
+    data: newArrivalsResponse,
+    isLoading: newArrivalsLoading,
+    isError: newArrivalsError,
+  } = useNewArrivals();
+
+  const {
+    data: bestProductsResponse,
+    isLoading: bestProductsLoading,
+    isError: bestProductsError,
+  } = useBestProducts();
+
+  const newArrivals = newArrivalsResponse?.data?.slice(0, 4) || [];
 
   // Dynamic icon mapping for categories
   const getCategoryIcon = (categoryName: string) => {
@@ -254,11 +267,47 @@ function HomeContent() {
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary"></div>
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {newArrivals.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          
+          {newArrivalsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="bg-card border border-border rounded-lg p-4">
+                  <div className="w-full h-48 bg-muted animate-pulse rounded-md mb-4"></div>
+                  <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
+                  <div className="h-4 bg-muted animate-pulse rounded w-20 mb-4"></div>
+                  <div className="h-8 bg-muted animate-pulse rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : newArrivalsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-500">Failed to load new arrivals</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {newArrivals.map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={{
+                    id: product.id,
+                    name: product.title,
+                    slug: product.id, // Using id as slug since slug field doesn't exist in database
+                    image: product.images?.[0]?.url || product.product_img_url || '',
+                    price: Number(product.price),
+                    stock: product.stock_quantity,
+                    description: product.description || '',
+                    category: product.category?.name || '',
+                    brand: product.brand?.name || '',
+                    isNew: true,
+                    isBestSeller: false,
+                    sku: product.sku,
+                    specs: {},
+                    fitment: []
+                  }} 
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="container mx-auto px-4">
@@ -268,29 +317,65 @@ function HomeContent() {
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary"></div>
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {bestSellers.map((product) => (
-               <div key={product.id} className="flex flex-col sm:flex-row bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all">
-                  <div className="sm:w-1/2 bg-muted/20 p-6 flex items-center justify-center relative">
-                     <img src={product.image} alt={product.name} className="max-w-full max-h-[200px] object-contain" />
-                     <span className="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-2 py-1 uppercase rounded-sm">Hot</span>
+          
+          {bestProductsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="flex flex-col sm:flex-row bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="sm:w-1/2 bg-muted/20 p-6 flex items-center justify-center">
+                    <div className="w-full h-48 bg-muted animate-pulse rounded-md"></div>
                   </div>
                   <div className="sm:w-1/2 p-6 flex flex-col justify-center">
-                     <div className="flex items-center mb-2">
-                       {[1,2,3,4,5].map(star => (
-                         <svg key={star} className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                       ))}
-                     </div>
-                     <h3 className="text-xl font-bold font-heading uppercase leading-tight mb-2 line-clamp-2">{product.name}</h3>
-                     <div className="text-2xl font-bold text-primary mb-4">${product.price.toLocaleString()}</div>
-                     <p className="text-sm text-muted-foreground mb-6 line-clamp-2">{product.description}</p>
-                     <Link href={`/product/${product.slug}`}>
-                       <Button className="w-full rounded-sm font-bold uppercase tracking-wider">Add to Cart</Button>
-                     </Link>
+                    <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
+                    <div className="h-8 bg-muted animate-pulse rounded mb-4"></div>
+                    <div className="h-4 bg-muted animate-pulse rounded mb-6"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
                   </div>
-               </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          ) : bestProductsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-500">Failed to load best products</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {(bestProductsResponse?.data?.slice(0, 2) || []).map((product) => (
+                <div key={product.id} className="flex flex-col sm:flex-row bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all">
+                  <div className="sm:w-1/2 bg-muted/20 p-6 flex items-center justify-center relative">
+                    <img 
+                      src={product.images?.[0]?.url || product.product_img_url || ''} 
+                      alt={product.title} 
+                      className="max-w-full max-h-[200px] object-contain" 
+                    />
+                    {product.isHot && (
+                      <span className="absolute top-4 left-4 bg-primary text-white text-xs font-bold px-2 py-1 uppercase rounded-sm">Hot</span>
+                    )}
+                  </div>
+                  <div className="sm:w-1/2 p-6 flex flex-col justify-center">
+                    <div className="flex items-center mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <svg 
+                          key={i} 
+                          className={`w-4 h-4 ${i < product.avgRating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
+                      ))}
+                      <span className="ml-2 text-sm text-muted-foreground">({product.reviewCount})</span>
+                    </div>
+                    <h3 className="text-xl font-bold font-heading uppercase leading-tight mb-2 line-clamp-2">{product.title}</h3>
+                    <div className="text-2xl font-bold text-primary mb-4">${Number(product.price).toLocaleString()}</div>
+                    <p className="text-sm text-muted-foreground mb-6 line-clamp-2">{product.description}</p>
+                    <Link href={`/product/${product.id}`}>
+                      <Button className="w-full rounded-sm font-bold uppercase tracking-wider">View Details</Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
       </div>

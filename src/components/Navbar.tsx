@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Search, User, Menu, Heart, Sun, Moon, LogOut, Settings, LogIn } from "lucide-react";
+import { ShoppingCart, Search, User, Menu, Heart, Sun, Moon, LogOut, Settings, LogIn, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useCartStore } from "@/stores/useCartStore";
-import { useWishlistStore } from "@/stores/useWishlistStore";
+import WishlistCount from "@/components/WishlistCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
@@ -22,13 +22,13 @@ import {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const cartItems = useCartStore((state) => state.items);
-  const wishlistItems = useWishlistStore((state) => state.items);
+  const cartCount = useCartStore((state) => state.totalItems);
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  // Debug: Log cart count changes
+  console.log('Navbar - Cart count:', cartCount);
   const isLoggedIn = !!user;
 
   useEffect(() => {
@@ -70,6 +70,15 @@ export default function Navbar() {
                     {link.name}
                   </Link>
                 ))}
+                <div className="border-t border-border pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Link href="/wishlist" className="text-lg font-medium hover:text-primary transition-colors uppercase font-heading tracking-wider flex items-center gap-2">
+                      <Heart className="h-5 w-5" />
+                      Wishlist
+                    </Link>
+                    <WishlistCount />
+                  </div>
+                </div>
               </nav>
             </SheetContent>
           </Sheet>
@@ -111,14 +120,7 @@ export default function Navbar() {
             <Search className="h-5 w-5" />
           </Link>
           
-          <Link href="/wishlist" className="relative p-2 text-muted-foreground hover:text-primary transition-colors group">
-            <Heart className="h-6 w-6" />
-            {wishlistItems.length > 0 && (
-              <span className="absolute top-0 right-0 h-4 w-4 bg-primary text-[10px] font-bold flex items-center justify-center rounded-full text-white ring-2 ring-background">
-                {wishlistItems.length}
-              </span>
-            )}
-          </Link>
+          <WishlistCount />
 
           <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors group">
             <ShoppingCart className="h-6 w-6" />
@@ -151,6 +153,12 @@ export default function Navbar() {
                     <Link href="/profile" className="flex w-full items-center cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Profile Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/orders" className="flex w-full items-center cursor-pointer">
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>My Orders</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

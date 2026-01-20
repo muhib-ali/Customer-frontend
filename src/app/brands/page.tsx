@@ -1,12 +1,15 @@
 "use client";
 
-import { brands } from "@/data/mockData";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import Layout from "@/components/Layout";
+import { useBrands } from "@/services/brands";
 
 export default function Brands() {
+  const { data, isLoading, isError, error } = useBrands();
+  const brands = Array.isArray(data) ? data : [];
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -16,6 +19,12 @@ export default function Brands() {
         <p className="text-muted-foreground mb-8 text-lg">
           We only stock the most trusted names in the automotive performance industry.
         </p>
+
+        {isLoading ? (
+          <div className="text-muted-foreground">Loading brands...</div>
+        ) : isError ? (
+          <div className="text-red-500">{(error as any)?.message || "Failed to load brands"}</div>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {brands.map((brand) => (

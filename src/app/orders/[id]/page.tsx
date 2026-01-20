@@ -1,66 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Package, MapPin, CreditCard, Star } from "lucide-react";
 import Layout from "@/components/Layout";
-
-// Static mock data - will be replaced with API calls
-const mockOrderDetails = {
-  "ord-001": {
-    id: "ord-001",
-    orderNumber: "KSR-9928",
-    date: "2024-01-15",
-    status: "accepted",
-    customer: {
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "+1 234 567 8900",
-    },
-    shipping: {
-      address: "123 Main Street, Apt 4B",
-      city: "New York",
-      state: "NY",
-      zipCode: "10001",
-      country: "USA",
-    },
-    items: [
-      { 
-        id: "prod-001", 
-        productId: "123e4567-e89b-12d3-a456-426614174000",
-        name: "Premium Wireless Headphones", 
-        quantity: 1, 
-        price: 299.99,
-        image: "/placeholder-product.jpg"
-      },
-      { 
-        id: "prod-002", 
-        productId: "123e4567-e89b-12d3-a456-426614174001",
-        name: "Smart Watch Pro", 
-        quantity: 1, 
-        price: 599.99,
-        image: "/placeholder-product.jpg"
-      },
-      { 
-        id: "prod-003", 
-        productId: "123e4567-e89b-12d3-a456-426614174002",
-        name: "USB-C Cable 2m", 
-        quantity: 2, 
-        price: 200.01,
-        image: "/placeholder-product.jpg"
-      },
-    ],
-    subtotal: 1099.99,
-    discount: 0,
-    total: 1299.99,
-  },
-};
+import { useSession } from "next-auth/react";
+import { useToast } from "@/hooks/use-toast";
+import { getOrderById, type OrderDetail } from "@/services/orders";
+import { useCreateReview, useMyReviews } from "@/services/reviews";
 
 export default function OrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { data: session } = useSession();
   const orderId = params.id as string;
-  const order = mockOrderDetails[orderId as keyof typeof mockOrderDetails];
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [reviewModal, setReviewModal] = useState<{
     isOpen: boolean;
@@ -73,7 +30,41 @@ export default function OrderDetailPage() {
     comment: "",
   });
 
-  const [submitting, setSubmitting] = useState(false);
+  const token = session?.accessToken as string | undefined;
+  const createReviewMutation = useCreateReview(token || '');
+  const { data: myReviews = [] } = useMyReviews(token);
+
+  useEffect(() => {
+    if (!token) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/orders/${orderId}`)}`);
+      return;
+    }
+
+    setIsLoading(true);
+    getOrderById(orderId, token)
+      .then((res) => {
+        setOrder(res?.data ?? null);
+      })
+      .catch((e: any) => {
+        if (e?.message === 'AUTH_EXPIRED') {
+          router.push(`/login?callbackUrl=${encodeURIComponent(`/orders/${orderId}`)}`);
+          return;
+        }
+        toast({
+          title: "Error",
+          description: "Failed to load order details.",
+          className: "bg-red-600 text-white border-none",
+        });
+        setOrder(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [orderId, router, session?.accessToken, toast]);
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!order) {
     return (
@@ -98,16 +89,30 @@ export default function OrderDetailPage() {
       pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
       rejected: "bg-red-100 text-red-800 border-red-200",
       delivered: "bg-blue-100 text-blue-800 border-blue-200",
+      partially_accepted: "bg-blue-100 text-blue-800 border-blue-200",
     };
+
+    const displayText = status === 'partially_accepted' ? 'Partially Accepted' : status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[status as keyof typeof styles] || styles.pending}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {displayText}
       </span>
     );
   };
 
   const openReviewModal = (productId: string, productName: string) => {
+    // Check if user has already reviewed this product
+    const hasReviewed = (Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === productId);
+    if (hasReviewed) {
+      toast({
+        title: "Already Reviewed",
+        description: "You have already reviewed this product.",
+        className: "bg-orange-600 text-white border-none",
+      });
+      return;
+    }
+    
     setReviewModal({ isOpen: true, productId, productName });
     setReviewForm({ rating: 5, comment: "" });
   };
@@ -119,27 +124,51 @@ export default function OrderDetailPage() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    if (!token) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/orders/${orderId}`)}`);
+      return;
+    }
 
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/reviews', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     productId: reviewModal.productId,
-    //     rating: reviewForm.rating,
-    //     comment: reviewForm.comment,
-    //   }),
-    // });
+    try {
+      const created = await createReviewMutation.mutateAsync({
+        productId: reviewModal.productId,
+        rating: reviewForm.rating,
+        comment: reviewForm.comment,
+      });
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Review Submitted",
+        description: created?.status
+          ? `Your review is ${created.status} and will be visible after approval.`
+          : "Your review has been submitted.",
+        className: "bg-green-600 text-white border-none",
+      });
 
-    alert(`Review submitted for ${reviewModal.productName}!\n\nRating: ${reviewForm.rating} stars\nComment: ${reviewForm.comment}\n\nYour review is pending admin approval.`);
-    
-    setSubmitting(false);
-    closeReviewModal();
+      closeReviewModal();
+    } catch (e: any) {
+      if (e?.message === 'AUTH_EXPIRED') {
+        router.push(`/login?callbackUrl=${encodeURIComponent(`/orders/${orderId}`)}`);
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description: "Failed to submit review. Please try again.",
+        className: "bg-red-600 text-white border-none",
+      });
+    }
   };
+
+  const subtotalFromItems = (order.order_items || []).reduce((sum, item) => {
+    return sum + (Number(item.total_price || 0) || 0);
+  }, 0);
+
+  const subtotalAmount = Number((order as any).subtotal_amount ?? 0) || 0;
+  const totalAmount = Number((order as any).total_amount ?? 0) || 0;
+  const discountAmount = Number((order as any).discount_amount ?? 0) || 0;
+
+  const displaySubtotal = subtotalAmount > 0 ? subtotalAmount : subtotalFromItems;
+  const displayDiscount = discountAmount > 0 ? discountAmount : Math.max(0, displaySubtotal - totalAmount);
 
   return (
     <Layout>
@@ -154,15 +183,22 @@ export default function OrderDetailPage() {
           <div className="flex items-start justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold font-heading italic uppercase mb-2">
-                Order <span className="text-primary">#{order.orderNumber}</span>
+                Order <span className="text-primary">#{order.order_number}</span>
               </h1>
               <p className="text-muted-foreground">
-                Placed on {new Date(order.date).toLocaleDateString('en-US', { 
+                Placed on {new Date(order.created_at).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 
                   day: 'numeric' 
                 })}
               </p>
+              {(order as any).order_type === 'bulk' && (
+                <div className="mt-2">
+                  <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-600 text-white">
+                    BULK ORDER
+                  </span>
+                </div>
+              )}
             </div>
             {getStatusBadge(order.status)}
           </div>
@@ -175,9 +211,9 @@ export default function OrderDetailPage() {
                 Customer Information
               </h3>
               <div className="space-y-2 text-sm">
-                <p><span className="text-muted-foreground">Name:</span> {order.customer.name}</p>
-                <p><span className="text-muted-foreground">Email:</span> {order.customer.email}</p>
-                <p><span className="text-muted-foreground">Phone:</span> {order.customer.phone}</p>
+                <p><span className="text-muted-foreground">Name:</span> {order.first_name} {order.last_name}</p>
+                <p><span className="text-muted-foreground">Email:</span> {order.email}</p>
+                <p><span className="text-muted-foreground">Phone:</span> {order.phone}</p>
               </div>
             </div>
 
@@ -188,9 +224,9 @@ export default function OrderDetailPage() {
                 Shipping Address
               </h3>
               <div className="space-y-1 text-sm">
-                <p>{order.shipping.address}</p>
-                <p>{order.shipping.city}, {order.shipping.state} {order.shipping.zipCode}</p>
-                <p>{order.shipping.country}</p>
+                <p>{order.address}</p>
+                <p>{order.city}, {order.state} {order.zip_code}</p>
+                <p>{order.country}</p>
               </div>
             </div>
 
@@ -203,15 +239,17 @@ export default function OrderDetailPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal:</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>${displaySubtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Discount:</span>
-                  <span>${order.discount.toFixed(2)}</span>
-                </div>
+                {displayDiscount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Discount:</span>
+                    <span className="text-green-600">-${displayDiscount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="border-t border-border pt-2 flex justify-between font-bold">
                   <span>Total:</span>
-                  <span className="text-primary">${order.total.toFixed(2)}</span>
+                  <span className="text-primary">${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -221,24 +259,71 @@ export default function OrderDetailPage() {
           <div className="bg-card border border-border p-6" id="reviews">
             <h3 className="font-bold font-heading uppercase mb-6 text-xl">Order Items</h3>
             <div className="space-y-4">
-              {order.items.map((item) => (
+              {order.order_items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 border-b border-border pb-4 last:border-0 last:pb-0">
                   <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center">
                     <Package className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-bold mb-1">{item.name}</h4>
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="font-bold mb-1">{item.product_name}</h4>
+                      {(order as any).order_type === 'bulk' && (
+                        <span className={`px-2 py-1 rounded text-xs font-semibold border ${
+                          (item as any).item_status === 'accepted'
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : (item as any).item_status === 'rejected'
+                              ? 'bg-red-100 text-red-800 border-red-200'
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                        }`}>
+                          {String((item as any).item_status || 'pending')}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                    <p className="text-sm font-semibold mt-1">${item.price.toFixed(2)}</p>
+                    <p className="text-sm font-semibold mt-1">${Number(item.unit_price || 0).toFixed(2)}</p>
+
+                    {(order as any).order_type === 'bulk' && (
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                        <div className="bg-muted/30 border border-border rounded p-2">
+                          <div className="text-muted-foreground text-xs">Requested</div>
+                          <div className="font-semibold">
+                            ${Number((item as any).requested_price_per_unit ?? 0).toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="bg-muted/30 border border-border rounded p-2">
+                          <div className="text-muted-foreground text-xs">Offered</div>
+                          <div className="font-semibold">
+                            ${Number((item as any).offered_price_per_unit ?? 0).toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="bg-muted/30 border border-border rounded p-2">
+                          <div className="text-muted-foreground text-xs">Min Qty</div>
+                          <div className="font-semibold">
+                            {Number((item as any).bulk_min_quantity ?? 0) || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {order.status === 'accepted' && (
+                  {((order.status === 'accepted') || (order.status === 'partially_accepted' && (item as any).item_status === 'accepted')) && !(Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === item.product_id) && (
                     <button
-                      onClick={() => openReviewModal(item.productId, item.name)}
+                      onClick={() => openReviewModal(item.product_id, item.product_name)}
                       className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
                     >
                       <Star className="h-4 w-4" />
                       Write Review
                     </button>
+                  )}
+                  {((order.status === 'accepted') || (order.status === 'partially_accepted' && (item as any).item_status === 'accepted')) && (Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === item.product_id) && (
+                    <div className="text-sm text-green-600 font-medium flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-current" />
+                      Reviewed
+                    </div>
+                  )}
+                  {order.status === 'partially_accepted' && (item as any).item_status !== 'accepted' && (
+                    <div className="text-sm text-muted-foreground italic">
+                      Review not available for this item
+                    </div>
                   )}
                 </div>
               ))}
@@ -302,16 +387,16 @@ export default function OrderDetailPage() {
                   type="button"
                   onClick={closeReviewModal}
                   className="flex-1 border border-border px-4 py-2 rounded-lg hover:bg-muted transition-colors"
-                  disabled={submitting}
+                  disabled={createReviewMutation.isPending}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  disabled={submitting || reviewForm.comment.length < 10}
+                  disabled={createReviewMutation.isPending || reviewForm.comment.length < 10}
                 >
-                  {submitting ? 'Submitting...' : 'Submit Review'}
+                  {createReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
                 </button>
               </div>
             </form>

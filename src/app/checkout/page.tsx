@@ -10,39 +10,157 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { CheckCircle } from "lucide-react";
 import Layout from "@/components/Layout";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { bootstrapCartOnce } from "@/services/cart/bootstrap";
+import { type CartItem } from "@/services/cart";
+import { useAuth } from "@/contexts/AuthContext";
+import PromoCodeInput from "@/components/PromoCodeInput";
+import { createOrder } from "@/services/orders";
+import { resetCartBootstrap } from "@/services/cart/bootstrap";
 
 export default function CheckoutPage() {
-  const { items, subtotal, clearCart } = useCartStore();
+  const { totalAmount, clearCart } = useCartStore();
   const { toast } = useToast();
   const router = useRouter();
+  const { data: session } = useSession();
+  const { user } = useAuth();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  const total = subtotal();
-  const tax = total * 0.08;
+  const total = totalAmount;
   const shipping = total > 1000 ? 0 : 50;
-  const grandTotal = total + tax + shipping;
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [promoCode, setPromoCode] = useState<string>('');
+  
+  // Calculate discount amount
+  let discountAmount = 0;
+  if (promoDiscount > 0) {
+    if (promoDiscountType === 'percentage') {
+      discountAmount = total * (promoDiscount / 100);
+    } else {
+      discountAmount = promoDiscount;
+    }
+  }
+  
+  const grandTotal = total + shipping - discountAmount;
 
   useEffect(() => {
-    if (items.length === 0) {
+    const token = session?.accessToken as string | undefined;
+    if (!token) {
+      router.push("/login?callbackUrl=/checkout");
+      return;
+    }
+
+    // Fetch cart items
+    bootstrapCartOnce(token)
+      .then((cartData) => {
+        setCartItems(cartData.items);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch cart for checkout:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load cart items. Please try again.",
+          className: "bg-red-600 text-white border-none",
+        });
+        router.push("/cart");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [session?.accessToken, router, toast]);
+
+  useEffect(() => {
+    if (!isLoading && cartItems.length === 0) {
       router.push("/cart");
     }
-  }, [items.length, router]);
+  }, [cartItems.length, router, isLoading]);
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    setTimeout(() => {
+
+    const token = session?.accessToken as string | undefined;
+    if (!token) {
+      router.push("/login?callbackUrl=/checkout");
+      return;
+    }
+
+    if (isPlacingOrder) return;
+    setIsPlacingOrder(true);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const address = String(formData.get('address') || '').trim();
+    const city = String(formData.get('city') || '').trim();
+    const state = String(formData.get('state') || '').trim();
+    const country = String(formData.get('country') || '').trim();
+    const zip_code = String(formData.get('zip_code') || '').trim();
+
+    try {
+      const payload = {
+        items: cartItems.map((i) => ({
+          cart_id: i.cart_id,
+          ...((i.type === 'bulk' || (i as any).cart_type === 'bulk')
+            ? {
+                requested_price_per_unit: parseFloat((i as any).cart_requested_price_per_unit) ?? i.requested_price_per_unit,
+                offered_price_per_unit: parseFloat((i as any).cart_offered_price_per_unit) ?? i.offered_price_per_unit,
+                bulk_min_quantity: parseInt((i as any).cart_bulk_min_quantity) ?? i.bulk_min_quantity,
+              }
+            : {}),
+        })),
+        ...(promoCode ? { promo_code: promoCode } : {}),
+        address,
+        city,
+        state,
+        zip_code,
+        country,
+        notes: String(formData.get('notes') || '').trim() || undefined,
+      };
+
+      const res = await createOrder(payload, token);
+
       toast({
         title: "Order Placed Successfully!",
-        description: "Your order #KSR-9928 has been confirmed.",
+        description: res?.data?.order?.order_number
+          ? `Your order #${String(res.data.order.order_number)} has been confirmed.`
+          : "Your order has been confirmed.",
         className: "bg-green-600 text-white border-none",
       });
+
       clearCart();
-      router.push("/");
-    }, 1500);
+      resetCartBootstrap();
+
+      const newOrderId = (res?.data?.order as any)?.id as string | undefined;
+      if (newOrderId) {
+        router.push(`/orders/${newOrderId}`);
+      } else {
+        router.push("/orders");
+      }
+    } catch (error: any) {
+      if (error?.message === 'AUTH_EXPIRED') {
+        toast({
+          title: "Session Expired",
+          description: "Please login again to continue.",
+          className: "bg-orange-600 text-white border-none",
+        });
+        router.push("/login?callbackUrl=/checkout");
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description: "Failed to place order. Please try again.",
+        className: "bg-red-600 text-white border-none",
+      });
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
-  if (items.length === 0) {
+  if (isLoading || cartItems.length === 0) {
     return null;
   }
 
@@ -64,29 +182,36 @@ export default function CheckoutPage() {
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" required className="rounded-none bg-background/50 border-border" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" required className="rounded-none bg-background/50 border-border" />
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="fullname">Full Name</Label>
+                    <Input 
+                      id="fullname" 
+                      name="fullname"
+                      value={user?.fullname || ''} 
+                      readOnly 
+                      required 
+                      className="rounded-none bg-muted/30 border-border cursor-not-allowed" 
+                    />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">Address</Label>
-                    <Input id="address" required className="rounded-none bg-background/50 border-border" />
+                    <Input id="address" name="address" required className="rounded-none bg-background/50 border-border" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" required className="rounded-none bg-background/50 border-border" />
+                    <Input id="city" name="city" required className="rounded-none bg-background/50 border-border" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input id="state" name="state" required className="rounded-none bg-background/50 border-border" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input id="country" name="country" required className="rounded-none bg-background/50 border-border" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="zip">ZIP Code</Label>
-                    <Input id="zip" required className="rounded-none bg-background/50 border-border" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" required className="rounded-none bg-background/50 border-border" />
+                    <Input id="zip" name="zip_code" required className="rounded-none bg-background/50 border-border" />
                   </div>
                 </div>
               </div>
@@ -143,18 +268,30 @@ export default function CheckoutPage() {
              <div className="bg-card border border-border p-6 sticky top-24">
               <h3 className="text-xl font-bold font-heading uppercase mb-6">Order Review</h3>
               
+              <div className="mb-6">
+                <PromoCodeInput 
+                  orderAmount={total} 
+                  token={session?.accessToken || ''}
+                  onPromoCodeApplied={(discount, type, code) => {
+                    setPromoDiscount(discount);
+                    setPromoDiscountType(type);
+                    setPromoCode(code);
+                  }}
+                />
+              </div>
+              
               <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2">
-                {items.map(item => (
-                  <div key={item.id} className="flex gap-3 text-sm">
+                {cartItems.map(item => (
+                  <div key={item.cart_id} className="flex gap-3 text-sm">
                     <div className="w-12 h-12 bg-muted/20 border border-border flex-shrink-0">
-                      <img src={item.image} className="w-full h-full object-contain" alt={item.name} />
+                      <img src={item.product_product_img_url || '/placeholder.png'} className="w-full h-full object-contain" alt={item.product_title || 'Product'} />
                     </div>
                     <div className="flex-grow">
-                      <p className="font-bold line-clamp-1">{item.name}</p>
-                      <p className="text-muted-foreground">Qty: {item.quantity}</p>
+                      <p className="font-bold line-clamp-1">{item.product_title || 'Untitled Product'}</p>
+                      <p className="text-muted-foreground">Qty: {item.cart_quantity}</p>
                     </div>
                     <div className="font-mono">
-                      ${(item.price * item.quantity).toLocaleString()}
+                      ${((parseFloat(item.product_price) || 0) * (item.cart_quantity || 0)).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -171,10 +308,12 @@ export default function CheckoutPage() {
                   <span>Shipping</span>
                   <span className="font-mono">{shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Tax</span>
-                  <span className="font-mono">${tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span className="font-mono">-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                  <div className="flex justify-between items-end pt-4 border-t border-border mt-4">
                   <span className="text-lg font-bold uppercase">Total</span>
                   <span className="text-2xl font-bold font-heading text-primary">
@@ -187,9 +326,10 @@ export default function CheckoutPage() {
                 type="submit"
                 form="checkout-form"
                 size="lg" 
+                disabled={isPlacingOrder}
                 className="w-full rounded-none bg-primary text-white hover:bg-white hover:text-black font-bold uppercase tracking-wider h-14 text-lg"
               >
-                Place Order <CheckCircle className="ml-2 h-5 w-5" />
+                {isPlacingOrder ? "Placing..." : "Place Order"} <CheckCircle className="ml-2 h-5 w-5" />
               </Button>
              </div>
           </div>

@@ -7,18 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, ShoppingCart, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useCartStore, Product } from "@/stores/useCartStore";
-import { products } from "@/data/mockData";
+import { useCartStore } from "@/stores/useCartStore";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import { getProductBulkPricingBySku, addBulkItemToCart, BulkPricing } from "@/services/bulk-orders";
+import { resetCartBootstrap } from "@/services/cart/bootstrap";
 
 interface BulkRow {
   id: string;
   sku: string;
   qty: number;
-  product?: Product;
-  status: 'valid' | 'invalid' | 'out-of-stock' | 'idle';
+  product?: {
+    id: string;
+    title: string;
+    sku: string;
+    price: number;
+    stock_quantity: number;
+  };
+  bulkPricing?: BulkPricing[];
+  status: 'valid' | 'invalid' | 'out-of-stock' | 'idle' | 'loading';
   notes?: string;
+  offeredPrice?: number;
+  requestedPrice?: number;
+  pricePerProduct?: number;
+  cartId?: string;
 }
 
 export default function BulkOrder() {
@@ -33,29 +45,70 @@ export default function BulkOrder() {
     { id: '5', sku: '', qty: 1, status: 'idle' },
   ]);
 
-  const addToCart = useCartStore((state) => state.addItem);
   const { toast } = useToast();
+  const { canAddBulkItems, setCartType, cartType, syncCartFromAPI } = useCartStore();
 
-  const handleSkuChange = (id: string, value: string) => {
-    const product = products.find(p => p.sku.toLowerCase() === value.toLowerCase());
-    
-    setRows(prev => prev.map(row => {
-      if (row.id !== id) return row;
-      
-      let status: BulkRow['status'] = 'idle';
-      if (value.length > 0) {
-        if (!product) status = 'invalid';
-        else if (product.stock < row.qty) status = 'out-of-stock';
-        else status = 'valid';
+  const handleSkuChange = async (id: string, value: string) => {
+    if (!value.trim()) {
+      setRows(prev => prev.map(row => 
+        row.id === id ? { ...row, sku: '', status: 'idle', product: undefined, bulkPricing: undefined } : row
+      ));
+      return;
+    }
+
+    // Set loading state
+    setRows(prev => prev.map(row => 
+      row.id === id ? { ...row, sku: value, status: 'loading' } : row
+    ));
+
+    try {
+      const token = session?.accessToken as string;
+      if (!token) {
+        throw new Error('Please login to continue');
       }
 
-      return {
-        ...row,
-        sku: value,
-        product,
-        status
-      };
-    }));
+      // Fetch product with bulk pricing from API
+      const data = await getProductBulkPricingBySku(value, token);
+      
+      setRows(prev => prev.map(row => {
+        if (row.id !== id) return row;
+        
+        let status: BulkRow['status'] = 'valid';
+        let offeredPrice: number | undefined;
+        let requestedPrice: number | undefined;
+        let pricePerProduct: number | undefined;
+        
+        if (data.product.stock_quantity < row.qty) {
+          status = 'out-of-stock';
+        } else {
+          // Calculate bulk pricing based on quantity
+          const bulkPrice = calculateBulkPrice(data.bulkPricing, row.qty, data.product.price);
+          offeredPrice = bulkPrice;
+          requestedPrice = bulkPrice;
+          pricePerProduct = bulkPrice;
+        }
+
+        return {
+          ...row,
+          sku: value,
+          product: data.product,
+          bulkPricing: data.bulkPricing,
+          status,
+          offeredPrice,
+          requestedPrice,
+          pricePerProduct
+        };
+      }));
+    } catch (error: any) {
+      setRows(prev => prev.map(row => 
+        row.id === id ? { ...row, status: 'invalid', notes: error.message || 'Product not found' } : row
+      ));
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to fetch product',
+        variant: "destructive"
+      });
+    }
   };
 
   const handleQtyChange = (id: string, qty: number) => {
@@ -63,12 +116,47 @@ export default function BulkOrder() {
       if (row.id !== id) return row;
       
       let status = row.status;
-      if (row.product) {
-        status = row.product.stock < qty ? 'out-of-stock' : 'valid';
+      let offeredPrice: number | undefined;
+      let requestedPrice: number | undefined;
+      let pricePerProduct: number | undefined;
+      
+      if (row.product && row.bulkPricing) {
+        status = row.product.stock_quantity < qty ? 'out-of-stock' : 'valid';
+        if (status === 'valid') {
+          const bulkPrice = calculateBulkPrice(row.bulkPricing, qty, row.product.price);
+          offeredPrice = bulkPrice;
+          requestedPrice = row.requestedPrice || bulkPrice;
+          pricePerProduct = bulkPrice;
+        }
       }
 
-      return { ...row, qty, status };
+      return { 
+        ...row, 
+        qty, 
+        status, 
+        offeredPrice, 
+        requestedPrice,
+        pricePerProduct
+      };
     }));
+  };
+
+  const handleRequestedPriceChange = (id: string, price: number) => {
+    setRows(prev => prev.map(row => {
+      if (row.id !== id) return row;
+      return { ...row, requestedPrice: price };
+    }));
+  };
+
+  // Bulk pricing calculation function (from API data)
+  const calculateBulkPrice = (bulkPricing: BulkPricing[], quantity: number, regularPrice: number): number => {
+    // Find the highest applicable tier
+    const applicableTier = bulkPricing
+      .filter(tier => quantity >= tier.quantity)
+      .sort((a, b) => b.quantity - a.quantity)[0];
+    
+    // Return bulk price or regular price
+    return applicableTier ? applicableTier.price_per_product : regularPrice;
   };
 
   const addRow = () => {
@@ -84,10 +172,42 @@ export default function BulkOrder() {
     }
   };
 
-  const addAllToCart = () => {
+  const addAllToCart = async () => {
     if (!session?.accessToken) {
       router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
       return;
+    }
+
+    // Always fetch the latest cart directly for conflict detection.
+    // Relying on syncCartFromAPI can be throttled/skipped and then conflict toast won't show.
+    try {
+      const { getCart } = await import('@/services/cart');
+      const cartRes = await getCart(session.accessToken as string);
+      const items = cartRes?.data?.items || [];
+
+      const hasBulk = items.some((i: any) => i.type === 'bulk' || i.cart_type === 'bulk');
+      const hasRegular = items.some((i: any) => (!i.type && !i.cart_type) || i.type === 'regular' || i.cart_type === 'regular');
+
+      // If cart has regular items already, block bulk add + show toast
+      if (hasRegular && !hasBulk && items.length > 0) {
+        toast({
+          title: "Cart Conflict",
+          description: "Cannot add bulk items because your cart already has regular items. Please clear your cart first.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (e: any) {
+      // If cart fetch fails, fall back to store state (best effort)
+      await syncCartFromAPI(session.accessToken);
+      if (!canAddBulkItems()) {
+        toast({
+          title: "Cart Conflict",
+          description: "Cannot add bulk items. Please clear your cart first.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const validRows = rows.filter(r => r.status === 'valid' && r.product);
@@ -101,23 +221,91 @@ export default function BulkOrder() {
       return;
     }
 
-    validRows.forEach(row => {
-      if (row.product) {
-        addToCart(row.product, row.qty);
-      }
-    });
+    try {
+      const token = session.accessToken as string;
+      const addedItems: string[] = [];
+      const failedItems: string[] = [];
+      
+      // Set cart type to bulk
+      setCartType('bulk');
 
-    toast({
-      title: "Added to Cart",
-      description: `Successfully added ${validRows.length} items to your cart.`,
-      className: "bg-secondary text-white border-primary",
-    });
-    
-    setRows(prev => prev.map(row => 
-      row.status === 'valid' 
-        ? { id: Math.random().toString(), sku: '', qty: 1, status: 'idle' } 
-        : row
-    ));
+      // Add each item to cart via API
+      for (const row of validRows) {
+        if (row.product && row.offeredPrice != null && row.requestedPrice != null) {
+          const minQuantity = row.bulkPricing?.[0]?.quantity || row.qty;
+
+          try {
+            console.log('Adding to cart - SKU:', row.sku, 'Product ID:', row.product.id, 'Product Title:', row.product.title);
+            
+            const cartItem = await addBulkItemToCart({
+              product_id: row.product.id,
+              quantity: row.qty,
+              type: 'bulk',
+              requested_price_per_unit: row.requestedPrice,
+              offered_price_per_unit: row.offeredPrice,
+              bulk_min_quantity: minQuantity
+            }, token);
+
+            console.log('Cart item added successfully:', cartItem);
+
+            // Update row with cart_id
+            setRows(prev => prev.map(r => 
+              r.id === row.id ? { ...r, cartId: cartItem.cart_id } : r
+            ));
+            
+            addedItems.push(row.product.title);
+          } catch (e: any) {
+            console.error('Failed to add item to cart:', row.product.title, e);
+            failedItems.push(row.product.title);
+          }
+        } else {
+          failedItems.push(row.product?.title || row.sku);
+        }
+      }
+
+      if (addedItems.length === 0) {
+        toast({
+          title: "Nothing added",
+          description: "No bulk items were added. Please ensure SKU, quantity and prices are valid, then try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Refresh cart from API after adding items and reset bootstrap cache
+      await syncCartFromAPI(token);
+      resetCartBootstrap();
+
+      toast({
+        title: "Added to Cart",
+        description: `Successfully added ${addedItems.length} bulk items to your cart.`,
+        className: "bg-green-600 text-white border-none",
+      });
+
+      if (failedItems.length > 0) {
+        toast({
+          title: "Some items were skipped",
+          description: `${failedItems.length} item(s) could not be added. Please check their values and try again.`,
+          variant: "destructive",
+        });
+      }
+
+      // Clear rows after successful add
+      setRows([
+        { id: '1', sku: '', qty: 1, status: 'idle' },
+        { id: '2', sku: '', qty: 1, status: 'idle' },
+        { id: '3', sku: '', qty: 1, status: 'idle' },
+        { id: '4', sku: '', qty: 1, status: 'idle' },
+        { id: '5', sku: '', qty: 1, status: 'idle' },
+      ]);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to add items to cart',
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -142,6 +330,9 @@ export default function BulkOrder() {
                   <TableHead>Product Name</TableHead>
                   <TableHead className="w-[100px]">Qty</TableHead>
                   <TableHead className="w-[100px]">Stock</TableHead>
+                  <TableHead className="w-[120px]">Price Per Product</TableHead>
+                  <TableHead className="w-[120px]">Offered Price</TableHead>
+                  <TableHead className="w-[120px]">Requested Price</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -159,7 +350,7 @@ export default function BulkOrder() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {row.product ? row.product.name : <span className="text-muted-foreground italic">-</span>}
+                      {row.product ? row.product.title : <span className="text-muted-foreground italic">-</span>}
                     </TableCell>
                     <TableCell>
                       <Input 
@@ -171,7 +362,35 @@ export default function BulkOrder() {
                       />
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground">
-                      {row.product ? row.product.stock : '-'}
+                      {row.product ? row.product.stock_quantity : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Input 
+                        type="number"
+                        value={row.product ? row.product.price : ''}
+                        placeholder="Price"
+                        disabled
+                        className="h-8 rounded-none border-border bg-black/20 font-mono text-muted-foreground"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input 
+                        type="number"
+                        value={row.offeredPrice || ''}
+                        placeholder="Offered"
+                        disabled
+                        className="h-8 rounded-none border-border bg-black/20 font-mono text-green-600"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input 
+                        type="number"
+                        value={row.requestedPrice || ''}
+                        onChange={(e) => handleRequestedPriceChange(row.id, parseFloat(e.target.value) || 0)}
+                        placeholder="Requested"
+                        disabled={!row.product || row.status !== 'valid'}
+                        className="h-8 rounded-none border-border bg-black/20 focus-visible:ring-primary font-mono text-blue-600"
+                      />
                     </TableCell>
                     <TableCell>
                       {row.status === 'valid' && <CheckCircle2 className="text-green-500 h-5 w-5" />}

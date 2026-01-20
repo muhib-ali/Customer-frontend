@@ -1,46 +1,127 @@
 "use client";
 
-import { useState } from "react";
-import { products, categories, brands } from "@/data/mockData";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/Layout";
+import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function CategoriesPage() {
-  const [priceRange, setPriceRange] = useState([0, 5000]);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all');
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(
+    searchParams.get('brand')?.split(',').filter(Boolean) || []
+  );
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    Number(searchParams.get('minPrice')) || 0,
+    Number(searchParams.get('maxPrice')) || 5000
+  ]);
+  const [inStockOnly, setInStockOnly] = useState(searchParams.get('stock') === 'in');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>(
+    (searchParams.get('sortOrder') as 'ASC' | 'DESC') || 'DESC'
+  );
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
 
-  let filteredProducts = products.filter(product => {
-    if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
-    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
-    if (inStockOnly && product.stock <= 0) return false;
-    return true;
+  // Debounced filters state
+  const [debouncedFilters, setDebouncedFilters] = useState<ProductFilters>({
+    page: currentPage,
+    limit: 24,
+    category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+    minPrice: priceRange[0],
+    maxPrice: priceRange[1],
+    stock: inStockOnly ? 'in' : 'all',
+    search: searchQuery || undefined,
+    sortBy: sortBy as 'price' | 'created_at' | 'title' | 'stock_quantity',
+    sortOrder,
   });
 
-  // Sort products
-  filteredProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price;
-      case "price-high":
-        return b.price - a.price;
-      case "popular":
-        return (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0);
-      case "newest":
-      default:
-        return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
-    }
-  });
+  const [isUpdatingFilters, setIsUpdatingFilters] = useState(false);
 
-  const toggleBrand = (brand: string) => {
+  // Debounce effect - wait 3 seconds after user stops changing filters
+  useEffect(() => {
+    setIsUpdatingFilters(true);
+    const timer = setTimeout(() => {
+      setDebouncedFilters({
+        page: currentPage,
+        limit: 24,
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+        minPrice: priceRange[0],
+        maxPrice: priceRange[1],
+        stock: inStockOnly ? 'in' : 'all',
+        search: searchQuery || undefined,
+        sortBy: sortBy as 'price' | 'created_at' | 'title' | 'stock_quantity',
+        sortOrder,
+      });
+      setIsUpdatingFilters(false);
+    }, 2000); // 3 second delay
+
+    return () => {
+      clearTimeout(timer);
+      setIsUpdatingFilters(false);
+    };
+  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder]);
+
+  const { data: productsData, isLoading: productsLoading, isError: productsError } = useProducts(debouncedFilters);
+  const { data: brandsData, isLoading: brandsLoading } = useBrands();
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+
+  const products = productsData?.data?.products || [];
+  const pagination = productsData?.data?.pagination;
+  const brands = brandsData?.data?.brands || [];
+  const categories = categoriesData?.data?.categories || [];
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set('page', currentPage.toString());
+    if (selectedCategory !== 'all') params.set('category', selectedCategory);
+    if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
+    if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
+    if (priceRange[1] < 5000) params.set('maxPrice', priceRange[1].toString());
+    if (inStockOnly) params.set('stock', 'in');
+    if (searchQuery) params.set('search', searchQuery);
+    if (sortBy !== 'created_at') params.set('sortBy', sortBy);
+    if (sortOrder !== 'DESC') params.set('sortOrder', sortOrder);
+
+    const queryString = params.toString();
+    router.replace(`/categories${queryString ? `?${queryString}` : ''}`, { scroll: false });
+  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
+
+  const toggleBrand = (brandId: string) => {
     setSelectedBrands(prev => 
-      prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand]
+      prev.includes(brandId) ? prev.filter(b => b !== brandId) : [...prev, brandId]
     );
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: string) => {
+    const [field, order] = value.split('-');
+    setSortBy(field);
+    setSortOrder(order as 'ASC' | 'DESC');
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+  };
+
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1);
   };
 
   return (
@@ -57,6 +138,23 @@ export default function CategoriesPage() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full">
+            <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
+              <TabsTrigger value="all" className="px-6">All Categories</TabsTrigger>
+              {categoriesLoading ? (
+                <TabsTrigger value="loading" disabled>Loading...</TabsTrigger>
+              ) : (
+                categories.map(cat => (
+                  <TabsTrigger key={cat.id} value={cat.id} className="px-6">
+                    {cat.name}
+                  </TabsTrigger>
+                ))
+              )}
+            </TabsList>
+          </Tabs>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="w-full lg:w-64 flex-shrink-0 space-y-6">
             <div className="bg-card border border-border p-4 space-y-6">
@@ -65,13 +163,34 @@ export default function CategoriesPage() {
               </h3>
 
               <div className="space-y-4">
+                <h4 className="text-sm font-semibold uppercase text-muted-foreground">Search</h4>
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="submit" size="icon" variant="outline">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
+              </div>
+
+              <Separator className="bg-border" />
+
+              <div className="space-y-4">
                 <h4 className="text-sm font-semibold uppercase text-muted-foreground">Price Range</h4>
                 <Slider
                   defaultValue={[0, 5000]}
                   max={5000}
                   step={100}
                   value={priceRange}
-                  onValueChange={setPriceRange}
+                  onValueChange={(value) => {
+                    setPriceRange(value as [number, number]);
+                    setCurrentPage(1);
+                  }}
                   className="my-4"
                 />
                 <div className="flex items-center justify-between text-sm font-mono">
@@ -84,24 +203,30 @@ export default function CategoriesPage() {
 
               <div className="space-y-4">
                 <h4 className="text-sm font-semibold uppercase text-muted-foreground">Brands</h4>
-                <div className="space-y-2">
-                  {brands.map(brand => (
-                    <div key={brand.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`brand-${brand.id}`} 
-                        checked={selectedBrands.includes(brand.name)}
-                        onCheckedChange={() => toggleBrand(brand.name)}
-                        className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                      />
-                      <label 
-                        htmlFor={`brand-${brand.id}`} 
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {brand.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                {brandsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading brands...</p>
+                ) : brands.length > 0 ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {brands.map(brand => (
+                      <div key={brand.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`brand-${brand.id}`} 
+                          checked={selectedBrands.includes(brand.id)}
+                          onCheckedChange={() => toggleBrand(brand.id)}
+                          className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <label 
+                          htmlFor={`brand-${brand.id}`} 
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {brand.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No brands available</p>
+                )}
               </div>
 
               <Separator className="bg-border" />
@@ -112,12 +237,15 @@ export default function CategoriesPage() {
                   <Checkbox 
                     id="in-stock" 
                     checked={inStockOnly}
-                    onCheckedChange={(checked) => setInStockOnly(checked as boolean)}
+                    onCheckedChange={(checked) => {
+                      setInStockOnly(checked as boolean);
+                      setCurrentPage(1);
+                    }}
                     className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                   <label 
                     htmlFor="in-stock" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
                     In Stock Only
                   </label>
@@ -129,30 +257,124 @@ export default function CategoriesPage() {
           <div className="flex-grow">
             <div className="flex items-center justify-between mb-6 bg-secondary/50 p-2 border border-border">
               <span className="text-sm text-muted-foreground ml-2">
-                Showing <span className="font-bold">{filteredProducts.length}</span> results
+                {isUpdatingFilters ? (
+                  <span className="text-orange-500">Updating filters...</span>
+                ) : productsLoading ? (
+                  'Loading...'
+                ) : (
+                  <>
+                    Showing <span className="font-bold">{products.length}</span> of{' '}
+                    <span className="font-bold">{pagination?.total || 0}</span> results
+                  </>
+                )}
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">Sort by:</span>
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-[180px] bg-background border-border rounded-none h-8">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">Newest Arrivals</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
-                    <SelectItem value="popular">Popularity</SelectItem>
+                    <SelectItem value="created_at-DESC">Newest First</SelectItem>
+                    <SelectItem value="created_at-ASC">Oldest First</SelectItem>
+                    <SelectItem value="price-ASC">Price: Low to High</SelectItem>
+                    <SelectItem value="price-DESC">Price: High to Low</SelectItem>
+                    <SelectItem value="title-ASC">Name: A to Z</SelectItem>
+                    <SelectItem value="title-DESC">Name: Z to A</SelectItem>
+                    <SelectItem value="stock_quantity-DESC">Stock: High to Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+            {productsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading products...</p>
+                </div>
               </div>
+            ) : productsError ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border">
+                <h3 className="text-xl font-bold mb-2 text-destructive">Error loading products</h3>
+                <p className="text-muted-foreground">Please try again later.</p>
+              </div>
+            ) : products.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map(product => (
+                    <ProductCard key={product.id} product={{
+                      id: product.id,
+                      name: product.title,
+                      price: parseFloat(product.price),
+                      image: product.product_img_url || '',
+                      category: product.category?.name || '',
+                      brand: product.brand?.name || '',
+                      rating: 0,
+                      stock: product.stock_quantity,
+                      isNew: false,
+                      isBestSeller: false,
+                      discount: parseFloat(product.discount || '0'),
+                      sku: product.sku || '',
+                      slug: product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+                      description: product.description || '',
+                      specs: {},
+                      fitment: []
+                    }} />
+                  ))}
+                </div>
+
+                {pagination && pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-8">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-10"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                      disabled={currentPage === pagination.totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border">
                 <h3 className="text-xl font-bold mb-2">No products found</h3>

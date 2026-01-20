@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/sonner";
+import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionProvider } from "next-auth/react";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -18,6 +19,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             <TooltipProvider>
               {children}
               <Toaster />
+              <ShadcnToaster />
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
