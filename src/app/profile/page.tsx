@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PasswordField } from "@/components/ui/password-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -226,10 +227,9 @@ export default function ProfilePage() {
                   <form onSubmit={handleChangePassword} className="space-y-6">
                     <div className="space-y-2">
                       <Label htmlFor="current_password">Current Password</Label>
-                      <Input
+                      <PasswordField
                         id="current_password"
                         name="current_password"
-                        type="password"
                         required
                         className="bg-background/50"
                         disabled={changePasswordMutation.isPending}
@@ -238,10 +238,9 @@ export default function ProfilePage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="new_password">New Password</Label>
-                      <Input
+                      <PasswordField
                         id="new_password"
                         name="new_password"
-                        type="password"
                         required
                         className="bg-background/50"
                         disabled={changePasswordMutation.isPending}
@@ -253,10 +252,9 @@ export default function ProfilePage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="confirm_password">Confirm New Password</Label>
-                      <Input
+                      <PasswordField
                         id="confirm_password"
                         name="confirm_password"
-                        type="password"
                         required
                         className="bg-background/50"
                         disabled={changePasswordMutation.isPending}
