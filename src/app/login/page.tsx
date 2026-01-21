@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,52 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login, register } = useAuth();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Redirect logged-in users away from login page
+  useEffect(() => {
+    // Only check after session status is determined
+    if (status === "loading") return;
+
+    setIsCheckingAuth(false);
+
+    if (session?.user) {
+      // User is already logged in, redirect to home page
+      router.push("/");
+      return;
+    }
+
+    // Check for callback URL in query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const callbackUrl = urlParams.get('callbackUrl');
+    if (callbackUrl && session?.user) {
+      router.push(callbackUrl);
+    }
+  }, [session, status, router]);
+
+  // Show loading while checking authentication
+  if (isCheckingAuth || status === "loading") {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +76,11 @@ export default function LoginPage() {
         description: "You have successfully logged in.",
         className: "bg-green-600 text-white border-none",
       });
-      router.push("/");
+      
+      // Check for callback URL and redirect accordingly
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      router.push(callbackUrl || "/");
     } catch (error: any) {
       setError(error.message || "Login failed");
     } finally {
@@ -71,7 +113,11 @@ export default function LoginPage() {
         description: "Your account has been created successfully.",
         className: "bg-green-600 text-white border-none",
       });
-      router.push("/");
+      
+      // Check for callback URL and redirect accordingly
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      router.push(callbackUrl || "/");
     } catch (error: any) {
       setError(error.message || "Registration failed");
     } finally {

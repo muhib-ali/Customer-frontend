@@ -2,20 +2,35 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, Eye, ChevronRight } from "lucide-react";
+import { Package, Eye, ChevronRight, ChevronLeft, ChevronDown } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getMyOrders, type OrderListItem } from "@/services/orders";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function OrdersPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [convertedOrderTotals, setConvertedOrderTotals] = useState<{ [key: string]: number }>({});
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    nextPage: number | null;
+    prevPage: number | null;
+  } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 10;
 
   useEffect(() => {
     const token = session?.accessToken as string | undefined;
@@ -27,9 +42,10 @@ export default function OrdersPage() {
     setIsLoading(true);
     setIsError(false);
 
-    getMyOrders(token)
+    getMyOrders(token, currentPage, limit)
       .then((res) => {
         setOrders(res?.data?.orders ?? []);
+        setPagination(res?.data?.pagination ?? null);
       })
       .catch((e: any) => {
         setIsError(true);
@@ -46,7 +62,34 @@ export default function OrdersPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [session?.accessToken, router, toast]);
+  }, [session?.accessToken, currentPage, router, toast]);
+
+  // Convert order totals when currency changes
+  useEffect(() => {
+    const convertOrderTotals = async () => {
+      if (orders.length === 0) return;
+      
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedOrderTotals({});
+        return;
+      }
+
+      const conversions: { [key: string]: number } = {};
+      
+      try {
+        for (const order of orders) {
+          const converted = await convertAmount(Number(order.total_amount || 0), 'USD', targetCurrency);
+          conversions[order.id] = converted;
+        }
+        setConvertedOrderTotals(conversions);
+      } catch (error) {
+        console.error('Order totals conversion failed:', error);
+      }
+    };
+
+    convertOrderTotals();
+  }, [orders, convertAmount, getCurrencyCode]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -126,7 +169,7 @@ export default function OrdersPage() {
                         Order Total
                       </span>
                       <span className="text-lg font-bold">
-                        ${Number(order.total_amount || 0).toFixed(2)}
+                        {getCurrencySymbol()}{(convertedOrderTotals[order.id] || Number(order.total_amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -151,6 +194,51 @@ export default function OrdersPage() {
                   </div>
                 </div>
               ))}
+
+              {/* Pagination Controls */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex flex-col gap-4 items-center justify-between p-6 bg-card border border-border rounded-lg">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} orders
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(pagination.prevPage || 1)}
+                      disabled={!pagination.hasPrev}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-10 h-10 flex items-center justify-center text-sm font-medium rounded-lg transition-colors ${
+                            pageNum === pagination.page
+                              ? "bg-primary text-primary-foreground"
+                              : "border border-border bg-background hover:bg-accent"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(pagination.nextPage || pagination.totalPages)}
+                      disabled={!pagination.hasNext}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

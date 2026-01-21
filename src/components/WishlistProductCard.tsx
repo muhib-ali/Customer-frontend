@@ -10,6 +10,8 @@ import { removeFromWishlist } from "@/services/wishlist";
 import { useCartStore } from "@/stores/useCartStore";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { Button } from "@/components/ui/button";
+import { useCurrency } from "@/contexts/currency-context";
+import { useEffect, useState } from "react";
 
 interface WishlistProductCardProps {
   product: {
@@ -26,9 +28,33 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
+  const [convertedPrice, setConvertedPrice] = useState<number | null>(null);
   const addToCart = useCartStore((state: any) => state.addItem);
   const removeWishlistId = useWishlistStore((s) => s.removeWishlistId);
   const { toast } = useToast();
+
+  // Convert product price when currency changes
+  useEffect(() => {
+    const convertProductPrice = async () => {
+      if (!product?.price) return;
+      
+      try {
+        const targetCurrency = getCurrencyCode();
+        if (targetCurrency !== 'USD') {
+          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          setConvertedPrice(converted);
+        } else {
+          setConvertedPrice(null);
+        }
+      } catch (error) {
+        console.error('Wishlist product price conversion failed:', error);
+        setConvertedPrice(null);
+      }
+    };
+
+    convertProductPrice();
+  }, [product?.price, convertAmount, getCurrencyCode]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -143,7 +169,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
           
           <div className="flex items-center justify-between mt-auto">
             <div className="font-bold text-primary">
-              ${Number(product.price).toFixed(2)}
+              {getCurrencySymbol()}{(convertedPrice || Number(product.price)).toFixed(2)}
             </div>
             
             <div className={`text-xs ${product.stock > 0 ? 'text-emerald-500' : 'text-destructive'}`}>

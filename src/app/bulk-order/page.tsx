@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import { getProductBulkPricingBySku, addBulkItemToCart, BulkPricing } from "@/services/bulk-orders";
 import { resetCartBootstrap } from "@/services/cart/bootstrap";
+import { useCurrency } from "@/contexts/currency-context";
 
 interface BulkRow {
   id: string;
@@ -37,6 +38,7 @@ export default function BulkOrder() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const [rows, setRows] = useState<BulkRow[]>([
     { id: '1', sku: '', qty: 1, status: 'idle' },
     { id: '2', sku: '', qty: 1, status: 'idle' },
@@ -44,9 +46,45 @@ export default function BulkOrder() {
     { id: '4', sku: '', qty: 1, status: 'idle' },
     { id: '5', sku: '', qty: 1, status: 'idle' },
   ]);
+  const [convertedPrices, setConvertedPrices] = useState<{ [key: string]: { regularPrice: number; offeredPrice: number; requestedPrice: number } }>({});
 
   const { toast } = useToast();
   const { canAddBulkItems, setCartType, cartType, syncCartFromAPI } = useCartStore();
+
+  // Convert bulk order prices when currency changes
+  useEffect(() => {
+    const convertBulkPrices = async () => {
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedPrices({});
+        return;
+      }
+
+      const conversions: { [key: string]: { regularPrice: number; offeredPrice: number; requestedPrice: number } } = {};
+      
+      try {
+        for (const row of rows) {
+          if (row.product && (row.status === 'valid' || row.status === 'out-of-stock')) {
+            const regularPrice = await convertAmount(row.product.price, 'USD', targetCurrency);
+            const offeredPrice = row.offeredPrice ? await convertAmount(row.offeredPrice, 'USD', targetCurrency) : regularPrice;
+            const requestedPrice = row.requestedPrice ? await convertAmount(row.requestedPrice, 'USD', targetCurrency) : offeredPrice;
+            
+            conversions[row.id] = {
+              regularPrice,
+              offeredPrice,
+              requestedPrice
+            };
+          }
+        }
+        
+        setConvertedPrices(conversions);
+      } catch (error) {
+        console.error('Bulk price conversion failed:', error);
+      }
+    };
+
+    convertBulkPrices();
+  }, [rows, convertAmount, getCurrencyCode]);
 
   const handleSkuChange = async (id: string, value: string) => {
     if (!value.trim()) {
@@ -367,7 +405,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.product ? row.product.price : ''}
+                        value={row.product ? (convertedPrices[row.id]?.regularPrice || row.product.price).toFixed(2) : ''}
                         placeholder="Price"
                         disabled
                         className="h-8 rounded-none border-border bg-black/20 font-mono text-muted-foreground"
@@ -376,7 +414,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.offeredPrice || ''}
+                        value={row.offeredPrice ? (convertedPrices[row.id]?.offeredPrice || row.offeredPrice).toFixed(2) : ''}
                         placeholder="Offered"
                         disabled
                         className="h-8 rounded-none border-border bg-black/20 font-mono text-green-600"
@@ -385,7 +423,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.requestedPrice || ''}
+                        value={row.requestedPrice ? (convertedPrices[row.id]?.requestedPrice || row.requestedPrice).toFixed(2) : ''}
                         onChange={(e) => handleRequestedPriceChange(row.id, parseFloat(e.target.value) || 0)}
                         placeholder="Requested"
                         disabled={!row.product || row.status !== 'valid'}

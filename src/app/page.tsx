@@ -11,9 +11,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Category, useFeaturedCategories } from "@/services/categories";
 import { useNewArrivals } from "@/services/products/new-arrivals";
 import { useBestProducts } from "@/services/best-products";
+import { useCurrency } from "@/contexts/currency-context";
+import { useState, useEffect } from "react";
 
 function HomeContent() {
   const { user, logout } = useAuth();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
+  const [convertedBestPrices, setConvertedBestPrices] = useState<{ [key: string]: number }>({});
 
   const {
     data: featuredCategoriesResponse,
@@ -34,6 +38,33 @@ function HomeContent() {
   } = useBestProducts();
 
   const newArrivals = newArrivalsResponse?.data?.slice(0, 4) || [];
+
+  // Convert best products prices when currency changes
+  useEffect(() => {
+    const convertBestProductsPrices = async () => {
+      if (!bestProductsResponse?.data) return;
+      
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedBestPrices({});
+        return;
+      }
+
+      const conversions: { [key: string]: number } = {};
+      
+      try {
+        for (const product of bestProductsResponse.data.slice(0, 2)) {
+          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          conversions[product.id] = converted;
+        }
+        setConvertedBestPrices(conversions);
+      } catch (error) {
+        console.error('Best products price conversion failed:', error);
+      }
+    };
+
+    convertBestProductsPrices();
+  }, [bestProductsResponse, convertAmount, getCurrencyCode]);
 
   // Dynamic icon mapping for categories
   const getCategoryIcon = (categoryName: string) => {
@@ -366,7 +397,9 @@ function HomeContent() {
                       <span className="ml-2 text-sm text-muted-foreground">({product.reviewCount})</span>
                     </div>
                     <h3 className="text-xl font-bold font-heading uppercase leading-tight mb-2 line-clamp-2">{product.title}</h3>
-                    <div className="text-2xl font-bold text-primary mb-4">${Number(product.price).toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-primary mb-4">
+                      {getCurrencySymbol()}{(convertedBestPrices[product.id] || Number(product.price)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
                     <p className="text-sm text-muted-foreground mb-6 line-clamp-2">{product.description}</p>
                     <Link href={`/product/${product.id}`}>
                       <Button className="w-full rounded-sm font-bold uppercase tracking-wider">View Details</Button>

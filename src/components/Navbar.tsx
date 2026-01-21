@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ShoppingCart, Search, User, Menu, Heart, Sun, Moon, LogOut, Settings, LogIn, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import WishlistCount from "@/components/WishlistCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import CurrencySelector from "@/components/currency-selector";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,10 +23,12 @@ import {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const cartCount = useCartStore((state) => state.totalItems);
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Debug: Log cart count changes
   console.log('Navbar - Cart count:', cartCount);
@@ -37,6 +40,18 @@ export default function Navbar() {
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Redirect to categories page with search parameter
+      router.push(`/categories?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
   const navLinks = [
@@ -64,7 +79,20 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[300px] sm:w-[400px] border-r border-border bg-card text-foreground">
-              <nav className="flex flex-col gap-4 mt-8">
+              <div className="mb-6 relative">
+                <form onSubmit={handleSearch} className="w-full">
+                  <Input 
+                    placeholder="SEARCH PARTS..." 
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full h-10 pr-10 pl-4"
+                  />
+                  <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
+                    <Search className="h-4 w-4" />
+                  </button>
+                </form>
+              </div>
+              <nav className="flex flex-col gap-4">
                 {navLinks.map((link) => (
                   <Link key={link.href} href={link.href} className="text-lg font-medium hover:text-primary transition-colors uppercase font-heading tracking-wider">
                     {link.name}
@@ -104,21 +132,25 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden lg:flex items-center max-w-sm w-full relative">
-          <Input 
-            placeholder="SEARCH PARTS..." 
-            className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full h-10 pr-10 pl-4"
-          />
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <form onSubmit={handleSearch} className="w-full">
+            <Input 
+              placeholder="SEARCH PARTS..." 
+              value={searchQuery}
+              onChange={handleSearchInputChange}
+              className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full h-10 pr-10 pl-4"
+            />
+            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
+              <Search className="h-4 w-4" />
+            </button>
+          </form>
         </div>
 
         <div className="flex items-center gap-2">
+          <CurrencySelector />
+          
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground">
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
-
-          <Link href="/search" className="lg:hidden p-2 text-muted-foreground hover:text-primary">
-            <Search className="h-5 w-5" />
-          </Link>
           
           <WishlistCount />
 

@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCartStore } from "@/stores/useCartStore";
@@ -15,15 +15,18 @@ import Layout from "@/components/Layout";
 import { useProductById } from "@/services/products";
 import { useProductReviews, useProductReviewSummary, useMyReviews, type Review, myReviewsQueryKey } from "@/services/reviews";
 import { Star } from "lucide-react";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const id = params.slug as string;
   const { data, isLoading, isError, error } = useProductById(id);
   const product = data?.data;
+  const [convertedPrice, setConvertedPrice] = useState<number | null>(null);
   const { data: reviews = [], isLoading: reviewsLoading, error: reviewsError } = useProductReviews(product?.id);
   const { data: summary, isLoading: summaryLoading } = useProductReviewSummary(product?.id);
   const { data: myReviews = [], isLoading: myReviewsLoading, error: myReviewsError } = useMyReviews(session?.accessToken);
@@ -35,6 +38,28 @@ export default function ProductPage() {
   
   const { canAddRegularItems, setCartType, syncCartFromAPI, addProductId, setCartData } = useCartStore();
   const { toast } = useToast();
+
+  // Convert product price when currency changes
+  useEffect(() => {
+    const convertProductPrice = async () => {
+      if (!product?.price) return;
+      
+      try {
+        const targetCurrency = getCurrencyCode();
+        if (targetCurrency !== 'USD') {
+          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          setConvertedPrice(converted);
+        } else {
+          setConvertedPrice(null);
+        }
+      } catch (error) {
+        console.error('Product price conversion failed:', error);
+        setConvertedPrice(null);
+      }
+    };
+
+    convertProductPrice();
+  }, [product?.price, convertAmount, getCurrencyCode]);
 
   const wishlistIds = useWishlistStore((s) => s.wishlistIds);
   const setWishlistIds = useWishlistStore((s) => s.setWishlistIds);
@@ -361,7 +386,7 @@ export default function ProductPage() {
             
             <div className="flex items-center gap-4 mb-6">
               <div className="text-4xl font-bold font-heading text-primary">
-                ${Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {getCurrencySymbol()}{(convertedPrice || Number(product.price)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
               {product.discount && Number(product.discount) > 0 && (
                 <div className="px-3 py-1 bg-red-900/30 text-red-500 text-xs font-bold uppercase tracking-wider border border-red-900">
