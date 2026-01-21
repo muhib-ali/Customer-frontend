@@ -97,30 +97,46 @@ export const authOptions = {
         }
       }
 
-      // Check if token is expired
+      // Check if token is expired or will expire soon (add 5 minute buffer)
       if (token.expiresAt) {
         const expirationTime = new Date(token.expiresAt).getTime()
         const currentTime = Date.now()
+        const bufferTime = 5 * 60 * 1000 // 5 minutes buffer
         
-        if (currentTime >= expirationTime) {
+        if (currentTime >= (expirationTime - bufferTime)) {
           try {
+            console.log("Token expired or expiring soon, attempting refresh...")
             // Refresh token
             const response = await axios.post(`${API_URL}/auth/refresh`, {
               refresh_token: token.refreshToken as string,
+            }, {
+              timeout: 10000, // 10 second timeout
             })
 
             if (response.data.status) {
               const { token: newToken, expires_at } = response.data.data
               
+              console.log("Token refreshed successfully")
               return {
                 ...token,
                 accessToken: newToken,
                 expiresAt: expires_at,
               }
+            } else {
+              console.error("Token refresh failed: API returned false status")
+              return null
             }
-          } catch (error) {
+          } catch (error: any) {
             // Refresh failed, return null to sign out
-            console.error("Token refresh failed:", error)
+            console.error("Token refresh failed:", error.response?.data?.message || error.message)
+            
+            // Clear stored tokens on refresh failure
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem("accessToken")
+              localStorage.removeItem("refreshToken")
+              localStorage.removeItem("expiresAt")
+            }
+            
             return null
           }
         }

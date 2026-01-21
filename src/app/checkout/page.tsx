@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import PromoCodeInput from "@/components/PromoCodeInput";
 import { createOrder } from "@/services/orders";
 import { resetCartBootstrap } from "@/services/cart/bootstrap";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function CheckoutPage() {
   const { totalAmount, clearCart } = useCartStore();
@@ -25,11 +26,16 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { user } = useAuth();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [convertedPrices, setConvertedPrices] = useState<{ [key: string]: number }>({});
+  const [convertedTotals, setConvertedTotals] = useState<{ subtotal: number; shipping: number; discount: number; grandTotal: number } | null>(null);
+  const [calculatedTotal, setCalculatedTotal] = useState(0);
 
-  const total = totalAmount;
+  // Calculate total from cart items instead of using totalAmount
+  const total = calculatedTotal;
   const shipping = total > 1000 ? 0 : 50;
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoDiscountType, setPromoDiscountType] = useState<'percentage' | 'fixed'>('percentage');
@@ -78,6 +84,68 @@ export default function CheckoutPage() {
       router.push("/cart");
     }
   }, [cartItems.length, router, isLoading]);
+
+  // Calculate total from cart items
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setCalculatedTotal(0);
+      return;
+    }
+
+    const total = cartItems.reduce((sum, item) => {
+      const isBulk = item.type === 'bulk' || (item as any).cart_type === 'bulk';
+      const unitPrice = isBulk
+        ? (typeof item.offered_price_per_unit === 'number' ? item.offered_price_per_unit : parseFloat((item as any).cart_offered_price_per_unit) || parseFloat(item.product_price) || 0)
+        : (parseFloat(item.product_price) || 0);
+      const quantity = item.cart_quantity || 0;
+      return sum + (unitPrice * quantity);
+    }, 0);
+
+    setCalculatedTotal(total);
+  }, [cartItems]);
+
+  // Convert checkout prices when currency changes
+  useEffect(() => {
+    const convertCheckoutPrices = async () => {
+      if (cartItems.length === 0) return;
+      
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedPrices({});
+        setConvertedTotals(null);
+        return;
+      }
+
+      const conversions: { [key: string]: number } = {};
+      
+      try {
+        // Convert individual item prices
+        for (const item of cartItems) {
+          const itemTotal = (parseFloat(item.product_price) || 0) * (item.cart_quantity || 0);
+          const converted = await convertAmount(itemTotal, 'USD', targetCurrency);
+          conversions[item.cart_id] = converted;
+        }
+        
+        // Convert totals
+        const convertedSubtotal = await convertAmount(total, 'USD', targetCurrency);
+        const convertedShipping = await convertAmount(shipping, 'USD', targetCurrency);
+        const convertedDiscount = await convertAmount(discountAmount, 'USD', targetCurrency);
+        const convertedGrandTotal = await convertAmount(grandTotal, 'USD', targetCurrency);
+        
+        setConvertedPrices(conversions);
+        setConvertedTotals({
+          subtotal: convertedSubtotal,
+          shipping: convertedShipping,
+          discount: convertedDiscount,
+          grandTotal: convertedGrandTotal
+        });
+      } catch (error) {
+        console.error('Checkout price conversion failed:', error);
+      }
+    };
+
+    convertCheckoutPrices();
+  }, [cartItems, total, shipping, discountAmount, grandTotal, convertAmount, getCurrencyCode]);
 
   const handlePlaceOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -227,14 +295,14 @@ export default function CheckoutPage() {
                       <RadioGroupItem value="standard" id="r1" />
                       <Label htmlFor="r1" className="cursor-pointer">Standard Ground (5-7 Days)</Label>
                     </div>
-                    <span className="font-mono">{shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
+                    <span className="font-mono">{shipping === 0 ? 'FREE' : `${getCurrencySymbol()}${(convertedTotals?.shipping || shipping || 0).toFixed(2)}`}</span>
                   </div>
                   <div className="flex items-center justify-between space-x-2 border border-border p-4 hover:border-primary transition-colors cursor-pointer mt-2">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="express" id="r2" />
                       <Label htmlFor="r2" className="cursor-pointer">Express Air (2 Days)</Label>
                     </div>
-                    <span className="font-mono">$45.00</span>
+                    <span className="font-mono">{getCurrencySymbol()}{(convertedTotals?.shipping ? convertedTotals.shipping * 2 : 90).toFixed(2)}</span>
                   </div>
                 </RadioGroup>
               </div>
@@ -270,7 +338,7 @@ export default function CheckoutPage() {
               
               <div className="mb-6">
                 <PromoCodeInput 
-                  orderAmount={total} 
+                  orderAmount={total || 0} 
                   token={session?.accessToken || ''}
                   onPromoCodeApplied={(discount, type, code) => {
                     setPromoDiscount(discount);
@@ -291,7 +359,7 @@ export default function CheckoutPage() {
                       <p className="text-muted-foreground">Qty: {item.cart_quantity}</p>
                     </div>
                     <div className="font-mono">
-                      ${((parseFloat(item.product_price) || 0) * (item.cart_quantity || 0)).toFixed(2)}
+                      {getCurrencySymbol()}{(convertedPrices[item.cart_id] || ((parseFloat(item.product_price) || 0) * (item.cart_quantity || 0)) || 0).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -302,22 +370,22 @@ export default function CheckoutPage() {
                <div className="space-y-2 mb-6">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span className="font-mono">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-mono">{getCurrencySymbol()}{(convertedTotals?.subtotal || total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Shipping</span>
-                  <span className="font-mono">{shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
+                  <span className="font-mono">{shipping === 0 ? 'FREE' : 'Calculated at checkout'}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>
-                    <span className="font-mono">-${discountAmount.toFixed(2)}</span>
+                    <span className="font-mono">-{getCurrencySymbol()}{(convertedTotals?.discount || discountAmount || 0).toFixed(2)}</span>
                   </div>
                 )}
                  <div className="flex justify-between items-end pt-4 border-t border-border mt-4">
                   <span className="text-lg font-bold uppercase">Total</span>
                   <span className="text-2xl font-bold font-heading text-primary">
-                    ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {getCurrencySymbol()}{(convertedTotals?.grandTotal || grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

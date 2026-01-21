@@ -10,14 +10,18 @@ import Link from "next/link";
 import { bootstrapCartOnce, resetCartBootstrap } from "@/services/cart/bootstrap";
 import { updateCartItem, removeFromCart, clearCart as clearCartAPI, type CartItem } from "@/services/cart";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function CartPage() {
   const { data: session } = useSession();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [lastClickTime, setLastClickTime] = useState<{ [key: string]: number }>({});
+  const [convertedPrices, setConvertedPrices] = useState<{ [key: string]: number }>({});
+  const [convertedTotal, setConvertedTotal] = useState<number | null>(null);
   const { toast } = useToast();
 
   const cartProductIds = useCartStore((s) => s.cartProductIds);
@@ -64,6 +68,45 @@ export default function CartPage() {
       cancelled = true;
     };
   }, [session?.accessToken]);
+
+  // Convert cart prices when currency changes
+  useEffect(() => {
+    const convertCartPrices = async () => {
+      if (cartItems.length === 0) return;
+      
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedPrices({});
+        setConvertedTotal(null);
+        return;
+      }
+
+      const conversions: { [key: string]: number } = {};
+      
+      try {
+        // Convert individual item prices
+        for (const item of cartItems) {
+          const isBulk = item.type === 'bulk' || (item as any).cart_type === 'bulk';
+          const unitPrice = isBulk
+            ? (typeof item.offered_price_per_unit === 'number' ? item.offered_price_per_unit : parseFloat((item as any).cart_offered_price_per_unit) || parseFloat(item.product_price) || 0)
+            : (parseFloat(item.product_price) || 0);
+          
+          const converted = await convertAmount(unitPrice, 'USD', targetCurrency);
+          conversions[item.cart_id] = converted;
+        }
+        
+        // Convert total amount
+        const convertedTotalAmount = await convertAmount(calculatedTotalAmount, 'USD', targetCurrency);
+        
+        setConvertedPrices(conversions);
+        setConvertedTotal(convertedTotalAmount);
+      } catch (error) {
+        console.error('Cart price conversion failed:', error);
+      }
+    };
+
+    convertCartPrices();
+  }, [cartItems, calculatedTotalAmount, convertAmount, getCurrencyCode]);
 
   const handleUpdateQuantity = async (cartItemId: string, currentQuantity: number, change: number) => {
     const token = session?.accessToken as string | undefined;
@@ -317,7 +360,7 @@ export default function CartPage() {
                     </p>
                     {!isBulk && (
                       <p className="text-lg font-bold text-primary mt-2">
-                        ${displayUnitPrice.toFixed(2)}
+                        {getCurrencySymbol()}{(convertedPrices[item.cart_id] || displayUnitPrice).toFixed(2)}
                       </p>
                     )}
 
@@ -326,13 +369,13 @@ export default function CartPage() {
                         <div className="bg-muted/30 border border-border rounded p-2">
                           <div className="text-muted-foreground text-xs">Requested Price</div>
                           <div className="font-semibold">
-                            ${Number((item as any).cart_requested_price_per_unit ?? item.requested_price_per_unit ?? 0).toFixed(2)}
+                            {getCurrencySymbol()}{(convertedPrices[item.cart_id] || Number((item as any).cart_requested_price_per_unit ?? item.requested_price_per_unit ?? 0)).toFixed(2)}
                           </div>
                         </div>
                         <div className="bg-muted/30 border border-border rounded p-2">
                           <div className="text-muted-foreground text-xs">Offered Price</div>
                           <div className="font-semibold">
-                            ${Number((item as any).cart_offered_price_per_unit ?? item.offered_price_per_unit ?? displayUnitPrice).toFixed(2)}
+                            {getCurrencySymbol()}{(convertedPrices[item.cart_id] || Number((item as any).cart_offered_price_per_unit ?? item.offered_price_per_unit ?? displayUnitPrice)).toFixed(2)}
                           </div>
                         </div>
                         <div className="bg-muted/30 border border-border rounded p-2">
@@ -386,7 +429,7 @@ export default function CartPage() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-bold">${calculatedTotalAmount.toFixed(2)}</span>
+                  <span className="font-bold">{getCurrencySymbol()}{(convertedTotal || calculatedTotalAmount).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
@@ -394,7 +437,7 @@ export default function CartPage() {
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between text-lg">
                   <span className="font-bold">Total</span>
-                  <span className="font-bold text-primary">${calculatedTotalAmount.toFixed(2)}</span>
+                  <span className="font-bold text-primary">{getCurrencySymbol()}{(convertedTotal || calculatedTotalAmount).toFixed(2)}</span>
                 </div>
               </div>
               <Link href="/checkout">

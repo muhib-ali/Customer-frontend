@@ -14,6 +14,8 @@ import { resetCartBootstrap } from "@/services/cart/bootstrap";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useToast } from "@/hooks/use-toast";
 import { useProductReviewSummary } from "@/services/reviews";
+import { useCurrency } from "@/contexts/currency-context";
+import { useEffect } from "react";
 
 interface ProductCardProps {
   product: Product;
@@ -25,7 +27,33 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { data: session } = useSession();
   const [isWishlistPending, setIsWishlistPending] = useState(false);
   const [isCartPending, setIsCartPending] = useState(false);
+  const [convertedPrice, setConvertedPrice] = useState<number | null>(null);
   const { toast } = useToast();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
+
+  // Convert price when currency changes
+  useEffect(() => {
+    const convertPrice = async () => {
+      try {
+        const targetCurrency = getCurrencyCode();
+        if (targetCurrency !== 'USD') {
+          const converted = await convertAmount(product.price, 'USD', targetCurrency);
+          setConvertedPrice(converted);
+        } else {
+          setConvertedPrice(null); // Show original USD price
+        }
+      } catch (error) {
+        console.error('Price conversion failed:', error);
+        setConvertedPrice(null); // Fallback to original price
+      }
+    };
+
+    convertPrice();
+  }, [product.price, convertAmount, getCurrencyCode]);
+
+  // Get display price
+  const displayPrice = convertedPrice || product.price;
+  const currencySymbol = getCurrencySymbol();
 
   // Get product rating summary
   const { data: ratingSummary } = useProductReviewSummary(product.id);
@@ -273,7 +301,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         
         <CardFooter className="p-4 pt-0 flex items-center justify-between border-t border-border/50 mt-auto">
           <div className="text-xl font-bold font-heading text-primary">
-            ${product.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {currencySymbol}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           {inCart ? (
             <Button

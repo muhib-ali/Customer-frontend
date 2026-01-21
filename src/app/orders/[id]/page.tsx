@@ -9,15 +9,19 @@ import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
 import { getOrderById, type OrderDetail } from "@/services/orders";
 import { useCreateReview, useMyReviews } from "@/services/reviews";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const orderId = params.id as string;
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [convertedPrices, setConvertedPrices] = useState<{ [key: string]: number }>({});
+  const [convertedTotals, setConvertedTotals] = useState<{ subtotal: number; discount: number; total: number } | null>(null);
 
   const [reviewModal, setReviewModal] = useState<{
     isOpen: boolean;
@@ -62,6 +66,59 @@ export default function OrderDetailPage() {
       });
   }, [orderId, router, session?.accessToken, toast]);
 
+  // Convert order prices when currency changes
+  useEffect(() => {
+    const convertOrderPrices = async () => {
+      if (!order) return;
+      
+      const targetCurrency = getCurrencyCode();
+      if (targetCurrency === 'USD') {
+        setConvertedPrices({});
+        setConvertedTotals(null);
+        return;
+      }
+
+      const conversions: { [key: string]: number } = {};
+      
+      try {
+        // Convert individual item prices
+        for (const item of order.order_items || []) {
+          const unitPrice = Number(item.unit_price || 0);
+          const converted = await convertAmount(unitPrice, 'USD', targetCurrency);
+          conversions[item.id] = converted;
+        }
+        
+        // Calculate totals for conversion
+        const subtotalFromItems = (order.order_items || []).reduce((sum, item) => {
+          return sum + (Number(item.total_price || 0) || 0);
+        }, 0);
+
+        const subtotalAmount = Number((order as any).subtotal_amount ?? 0) || 0;
+        const totalAmount = Number((order as any).total_amount ?? 0) || 0;
+        const discountAmount = Number((order as any).discount_amount ?? 0) || 0;
+
+        const displaySubtotal = subtotalAmount > 0 ? subtotalAmount : subtotalFromItems;
+        const displayDiscount = discountAmount > 0 ? discountAmount : Math.max(0, displaySubtotal - totalAmount);
+        
+        // Convert totals
+        const convertedSubtotal = await convertAmount(displaySubtotal, 'USD', targetCurrency);
+        const convertedDiscount = await convertAmount(displayDiscount, 'USD', targetCurrency);
+        const convertedTotal = await convertAmount(totalAmount, 'USD', targetCurrency);
+        
+        setConvertedPrices(conversions);
+        setConvertedTotals({
+          subtotal: convertedSubtotal,
+          discount: convertedDiscount,
+          total: convertedTotal
+        });
+      } catch (error) {
+        console.error('Order price conversion failed:', error);
+      }
+    };
+
+    convertOrderPrices();
+  }, [order, convertAmount, getCurrencyCode]);
+
   if (isLoading) {
     return null;
   }
@@ -82,6 +139,17 @@ export default function OrderDetailPage() {
       </Layout>
     );
   }
+
+  const subtotalFromItems = (order.order_items || []).reduce((sum, item) => {
+    return sum + (Number(item.total_price || 0) || 0);
+  }, 0);
+
+  const subtotalAmount = Number((order as any).subtotal_amount ?? 0) || 0;
+  const totalAmount = Number((order as any).total_amount ?? 0) || 0;
+  const discountAmount = Number((order as any).discount_amount ?? 0) || 0;
+
+  const displaySubtotal = subtotalAmount > 0 ? subtotalAmount : subtotalFromItems;
+  const displayDiscount = discountAmount > 0 ? discountAmount : Math.max(0, displaySubtotal - totalAmount);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -159,17 +227,6 @@ export default function OrderDetailPage() {
     }
   };
 
-  const subtotalFromItems = (order.order_items || []).reduce((sum, item) => {
-    return sum + (Number(item.total_price || 0) || 0);
-  }, 0);
-
-  const subtotalAmount = Number((order as any).subtotal_amount ?? 0) || 0;
-  const totalAmount = Number((order as any).total_amount ?? 0) || 0;
-  const discountAmount = Number((order as any).discount_amount ?? 0) || 0;
-
-  const displaySubtotal = subtotalAmount > 0 ? subtotalAmount : subtotalFromItems;
-  const displayDiscount = discountAmount > 0 ? discountAmount : Math.max(0, displaySubtotal - totalAmount);
-
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -239,17 +296,17 @@ export default function OrderDetailPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal:</span>
-                  <span>${displaySubtotal.toFixed(2)}</span>
+                  <span>{getCurrencySymbol()}{(convertedTotals?.subtotal || displaySubtotal || 0).toFixed(2)}</span>
                 </div>
                 {displayDiscount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Discount:</span>
-                    <span className="text-green-600">-${displayDiscount.toFixed(2)}</span>
+                    <span className="text-green-600">-{getCurrencySymbol()}{(convertedTotals?.discount || displayDiscount || 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="border-t border-border pt-2 flex justify-between font-bold">
                   <span>Total:</span>
-                  <span className="text-primary">${totalAmount.toFixed(2)}</span>
+                  <span className="text-primary">{getCurrencySymbol()}{(convertedTotals?.total || totalAmount || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -280,20 +337,20 @@ export default function OrderDetailPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                    <p className="text-sm font-semibold mt-1">${Number(item.unit_price || 0).toFixed(2)}</p>
+                    <p className="text-sm font-semibold mt-1">{getCurrencySymbol()}{(convertedPrices[item.id] || Number(item.unit_price || 0)).toFixed(2)}</p>
 
                     {(order as any).order_type === 'bulk' && (
                       <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                         <div className="bg-muted/30 border border-border rounded p-2">
                           <div className="text-muted-foreground text-xs">Requested</div>
                           <div className="font-semibold">
-                            ${Number((item as any).requested_price_per_unit ?? 0).toFixed(2)}
+                            {getCurrencySymbol()}{(convertedPrices[item.id] || Number((item as any).requested_price_per_unit ?? 0)).toFixed(2)}
                           </div>
                         </div>
                         <div className="bg-muted/30 border border-border rounded p-2">
                           <div className="text-muted-foreground text-xs">Offered</div>
                           <div className="font-semibold">
-                            ${Number((item as any).offered_price_per_unit ?? 0).toFixed(2)}
+                            {getCurrencySymbol()}{(convertedPrices[item.id] || Number((item as any).offered_price_per_unit ?? 0)).toFixed(2)}
                           </div>
                         </div>
                         <div className="bg-muted/30 border border-border rounded p-2">

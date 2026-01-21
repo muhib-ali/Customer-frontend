@@ -72,8 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profileData.status) {
             setUser(profileData.data);
           }
-        } catch (profileError) {
-          console.log("Profile API failed, using session data:", profileError);
+        } catch (profileError: any) {
+          console.log("Profile API failed, checking if token expired:", profileError);
+          
+          // Check if it's an auth error (401)
+          if (profileError.response?.status === 401) {
+            console.log("Token expired, forcing logout");
+            await logout();
+            return;
+          }
+          
           // User is already set with basic info, so continue
         }
       } catch (error) {
@@ -96,6 +104,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
   }, [session]);
+
+  // Monitor session expiry and logout if needed
+  useEffect(() => {
+    if (!session?.expiresAt || !user) return;
+
+    const checkSessionExpiry = () => {
+      if (!session.expiresAt) return;
+      
+      const expiresAt = new Date(session.expiresAt).getTime()
+      const currentTime = Date.now()
+      
+      // If session is expired or will expire in next 2 minutes, logout
+      if (currentTime >= expiresAt) {
+        console.log("Session expired, logging out")
+        // Call logout logic directly without dependency
+        localStorage.removeItem("accessToken")
+        localStorage.removeItem("refreshToken")
+        localStorage.removeItem("expiresAt")
+        
+        // Async logout
+        ;(async () => {
+          try {
+            await authApi.logout()
+            await signOut({ redirect: false })
+            setUser(null)
+          } catch (error) {
+            console.error("Logout error:", error)
+            await signOut({ redirect: false })
+            setUser(null)
+          }
+        })()
+      }
+    }
+
+    // Check immediately
+    checkSessionExpiry()
+    
+    // Set up periodic check every 30 seconds
+    const interval = setInterval(checkSessionExpiry, 30000)
+    
+    return () => clearInterval(interval)
+  }, [session?.expiresAt, user])
 
   const login = async (email: string, password: string) => {
     try {
@@ -144,6 +194,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear tokens from localStorage first
+      localStorage.removeItem("accessToken")
+      localStorage.removeItem("refreshToken")
+      localStorage.removeItem("expiresAt")
+      
+      // Try to call logout API
       await authApi.logout()
       await signOut({ redirect: false })
       setUser(null)

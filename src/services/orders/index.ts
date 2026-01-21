@@ -129,8 +129,8 @@ export async function createOrder(payload: CreateOrderRequest, token: string): P
   return response.json();
 }
 
-export async function getMyOrders(token: string): Promise<ApiResponse<MyOrdersResponseData>> {
-  const url = getApiUrl('/orders/my-orders?page=1&limit=10');
+export async function getMyOrders(token: string, page: number = 1, limit: number = 10): Promise<ApiResponse<MyOrdersResponseData>> {
+  const url = getApiUrl(`/orders/my-orders?page=${page}&limit=${limit}`);
   const response = await fetch(url, {
     method: 'GET',
     headers: {
