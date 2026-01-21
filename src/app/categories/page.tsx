@@ -37,7 +37,7 @@ export default function CategoriesPage() {
   // Debounced filters state
   const [debouncedFilters, setDebouncedFilters] = useState<ProductFilters>({
     page: currentPage,
-    limit: 24,
+    limit: 6,
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
     brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
     minPrice: priceRange[0],
@@ -56,7 +56,7 @@ export default function CategoriesPage() {
     const timer = setTimeout(() => {
       setDebouncedFilters({
         page: currentPage,
-        limit: 24,
+        limit: 6,
         category: selectedCategory !== 'all' ? selectedCategory : undefined,
         brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
         minPrice: priceRange[0],

@@ -335,7 +335,7 @@ export default function OrderDetailPage() {
       {/* Review Modal */}
       {reviewModal.isOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-card text-foreground border border-border rounded-lg max-w-md w-full p-6 shadow-lg">
             <h3 className="text-2xl font-bold font-heading uppercase mb-4">
               Write <span className="text-primary">Review</span>
             </h3>
@@ -357,7 +357,7 @@ export default function OrderDetailPage() {
                         className={`h-8 w-8 ${
                           star <= reviewForm.rating
                             ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
+                            : 'text-muted-foreground'
                         }`}
                       />
                     </button>
@@ -371,7 +371,7 @@ export default function OrderDetailPage() {
                 <textarea
                   value={reviewForm.comment}
                   onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                  className="w-full border border-border rounded-lg p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full bg-background text-foreground border border-border rounded-lg p-3 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
                   placeholder="Share your experience with this product (minimum 10 characters)..."
                   required
                   minLength={10}

@@ -105,9 +105,9 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
 
   return (
     <Link href={`/product/${product.slug}`} className="block h-full group">
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+      <div className="bg-card text-foreground rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
         {/* Product Image */}
-        <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <div className="relative aspect-square overflow-hidden bg-muted/30">
           <img
             src={product.image}
             alt={product.name}
@@ -118,7 +118,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
           <button
             onClick={handleRemoveFromWishlist}
             disabled={false}
-            className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-red-50 hover:text-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute top-2 right-2 p-2 bg-background/80 text-foreground rounded-full shadow-md hover:bg-destructive hover:text-destructive-foreground transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Remove from Wishlist"
           >
             <Trash2 className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
           <button
             onClick={handleAddToCart}
             disabled={product.stock === 0}
-            className="absolute bottom-2 left-2 p-2 bg-white rounded-full shadow-md hover:bg-primary hover:text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute bottom-2 left-2 p-2 bg-background/80 text-foreground rounded-full shadow-md hover:bg-primary hover:text-primary-foreground transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title={product.stock === 0 ? "Out of Stock" : "Add to Cart"}
           >
             <ShoppingCart className="h-4 w-4" />
@@ -137,7 +137,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
 
         {/* Product Info */}
         <div className="p-4 flex-1 flex flex-col">
-          <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors duration-200">
+          <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors duration-200">
             {product.name}
           </h3>
           
@@ -146,7 +146,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
               ${Number(product.price).toFixed(2)}
             </div>
             
-            <div className={`text-xs ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-xs ${product.stock > 0 ? 'text-emerald-500' : 'text-destructive'}`}>
               {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
             </div>
           </div>

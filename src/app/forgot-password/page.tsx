@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PasswordField } from "@/components/ui/password-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -149,14 +150,6 @@ export default function ForgotPasswordPage() {
                   />
                 </div>
 
-                {otpData && (
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <AlertDescription className="text-sm">
-                      <strong>Development Mode:</strong> OTP is <strong>{otpData.otp}</strong>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
                 <Button
                   className="w-full font-bold uppercase tracking-wider"
                   type="submit"
@@ -202,14 +195,7 @@ export default function ForgotPasswordPage() {
                   </p>
                 </div>
 
-                {otpData && (
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <AlertDescription className="text-sm">
-                      <strong>Development Mode:</strong> Your OTP is <strong>{otpData.otp}</strong>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
+                
                 <Button
                   className="w-full font-bold uppercase tracking-wider"
                   type="submit"
@@ -237,10 +223,9 @@ export default function ForgotPasswordPage() {
                     <Lock className="h-4 w-4" />
                     New Password
                   </Label>
-                  <Input
+                  <PasswordField
                     id="new_password"
                     name="new_password"
-                    type="password"
                     required
                     className="bg-background/50"
                     disabled={resetPasswordMutation.isPending}
@@ -255,10 +240,9 @@ export default function ForgotPasswordPage() {
                     <Lock className="h-4 w-4" />
                     Confirm Password
                   </Label>
-                  <Input
+                  <PasswordField
                     id="confirm_password"
                     name="confirm_password"
-                    type="password"
                     required
                     className="bg-background/50"
                     disabled={resetPasswordMutation.isPending}

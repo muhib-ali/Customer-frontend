@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/ui/password-field";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,10 +120,9 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input 
+                    <PasswordField 
                       id="password" 
                       name="password"
-                      type="password" 
                       required 
                       className="bg-background/50" 
                       disabled={isLoading}
@@ -193,10 +193,9 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-password">Password</Label>
-                    <Input 
+                    <PasswordField 
                       id="reg-password" 
                       name="reg-password"
-                      type="password" 
                       required 
                       className="bg-background/50" 
                       disabled={isLoading}
