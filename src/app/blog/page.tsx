@@ -61,9 +61,11 @@ export default function Blog() {
                 <p className="text-muted-foreground text-sm mb-6 flex-grow">
                   {post.excerpt}
                 </p>
-                <Button variant="link" className="p-0 h-auto hover:text-primary justify-start uppercase font-bold tracking-wider">
-                  Read More <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                <Link href={`/blog/${post.id}`}>
+                  <Button variant="link" className="p-0 h-auto hover:text-primary justify-start uppercase font-bold tracking-wider">
+                    Read More <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </div>
           ))}

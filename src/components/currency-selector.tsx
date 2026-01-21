@@ -85,12 +85,12 @@ export default function CurrencySelector() {
     <div className="relative">
       <button
         onClick={handleClick}
-        className="flex items-center gap-2 px-3 py-2 rounded-full border bg-white hover:bg-gray-50 transition-colors shadow-sm"
+        className="flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-card text-foreground hover:border-primary transition-colors shadow-sm"
         title={`Current currency: ${currentCurrency}`}
       >
-        <Globe className="h-4 w-4 text-blue-600" />
+        <Globe className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">{currentSymbol}</span>
-        <ChevronDown className="h-3 w-3 text-gray-500" />
+        <ChevronDown className="h-3 w-3 text-muted-foreground" />
       </button>
 
       {isOpen && (
@@ -99,10 +99,10 @@ export default function CurrencySelector() {
             className="fixed inset-0 z-40" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg border shadow-lg z-50">
-            <div className="p-3 border-b bg-gray-50">
-              <div className="text-sm font-medium text-gray-900">Select Currency</div>
-              <div className="text-xs text-gray-500">Search country or currency</div>
+          <div className="absolute right-0 mt-2 w-80 bg-card rounded-lg border border-border shadow-lg z-50">
+            <div className="p-3 border-b border-border bg-background">
+              <div className="text-sm font-medium text-foreground">Select Currency</div>
+              <div className="text-xs text-muted-foreground">Search country or currency</div>
             </div>
             
             {/* Search Input */}
@@ -114,7 +114,7 @@ export default function CurrencySelector() {
                   placeholder="Search countries..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   autoFocus
                 />
               </div>
@@ -139,8 +139,10 @@ export default function CurrencySelector() {
                           selectCountry(country);
                           setIsOpen(false);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 transition-colors ${
-                        selectedCountry?.cca2 === country.cca2 ? 'bg-blue-50 text-blue-700 border border-blue-200' : ''
+                        className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                        selectedCountry?.cca2 === country.cca2
+                          ? 'bg-primary/10 text-primary border border-primary/30'
+                          : 'text-foreground hover:bg-muted/60 focus:bg-muted/60'
                         }`}
                       >
                         <div className="flex items-center justify-between">

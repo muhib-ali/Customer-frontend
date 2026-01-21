@@ -299,15 +299,15 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="text-xs text-muted-foreground mt-auto">SKU: {product.sku}</div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex items-center justify-between border-t border-border/50 mt-auto">
-          <div className="text-xl font-bold font-heading text-primary">
+        <CardFooter className="p-4 pt-0 flex items-center justify-between gap-3 border-t border-border/50 mt-auto">
+          <div className="text-xl font-bold font-heading text-primary shrink-0">
             {currencySymbol}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           {inCart ? (
             <Button
               onClick={handleGoToCart}
               size="sm"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md"
+              className="w-[150px] bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md"
             >
               <ShoppingCart className="mr-2 h-4 w-4" />
               Go to Cart
@@ -317,7 +317,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               onClick={handleAddToCart}
               size="sm"
               disabled={isCartPending}
-              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md disabled:opacity-50"
+              className="w-[150px] bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md disabled:opacity-50"
             >
               <ShoppingCart className="mr-2 h-4 w-4" />
               {isCartPending ? "Adding..." : "Add to Cart"}
