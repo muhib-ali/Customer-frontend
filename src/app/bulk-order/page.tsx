@@ -405,7 +405,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.product ? (convertedPrices[row.id]?.regularPrice || row.product.price).toFixed(2) : ''}
+                        value={row.product ? Number(convertedPrices[row.id]?.regularPrice || row.product.price).toFixed(2) : ''}
                         placeholder="Price"
                         disabled
                         className="h-8 rounded-none border-border bg-black/20 font-mono text-muted-foreground"
@@ -414,7 +414,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.offeredPrice ? (convertedPrices[row.id]?.offeredPrice || row.offeredPrice).toFixed(2) : ''}
+                        value={row.offeredPrice ? Number(convertedPrices[row.id]?.offeredPrice || row.offeredPrice).toFixed(2) : ''}
                         placeholder="Offered"
                         disabled
                         className="h-8 rounded-none border-border bg-black/20 font-mono text-green-600"
@@ -423,7 +423,7 @@ export default function BulkOrder() {
                     <TableCell>
                       <Input 
                         type="number"
-                        value={row.requestedPrice ? (convertedPrices[row.id]?.requestedPrice || row.requestedPrice).toFixed(2) : ''}
+                        value={row.requestedPrice ? Number(convertedPrices[row.id]?.requestedPrice || row.requestedPrice).toFixed(2) : ''}
                         onChange={(e) => handleRequestedPriceChange(row.id, parseFloat(e.target.value) || 0)}
                         placeholder="Requested"
                         disabled={!row.product || row.status !== 'valid'}
