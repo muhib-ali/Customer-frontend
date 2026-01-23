@@ -164,7 +164,7 @@ export default function CartPage() {
       toast({
         title: "Error",
         description: "Failed to update quantity. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     } finally {
       setUpdatingItems((prev) => {
@@ -204,7 +204,7 @@ export default function CartPage() {
       toast({
         title: "Removed from Cart",
         description: "Item removed successfully.",
-        className: "bg-orange-600 text-white border-none",
+        variant: "warning",
       });
     } catch (error: any) {
       // Rollback on error
@@ -214,7 +214,7 @@ export default function CartPage() {
       toast({
         title: "Error",
         description: "Failed to remove item. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     } finally {
       setUpdatingItems((prev) => {
@@ -241,7 +241,7 @@ export default function CartPage() {
       toast({
         title: "Cart Cleared",
         description: "All items removed from cart.",
-        className: "bg-green-600 text-white border-none",
+        variant: "success",
       });
     } catch (error: any) {
       // Rollback on error
@@ -252,7 +252,7 @@ export default function CartPage() {
       toast({
         title: "Error",
         description: "Failed to clear cart. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     }
   };

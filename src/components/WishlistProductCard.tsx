@@ -88,7 +88,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
     toast({
       title: "Added to Cart",
       description: "Product added to your cart.",
-      className: "bg-primary text-white border-none",
+      variant: "success",
     });
   };
 
@@ -107,7 +107,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
       toast({
         title: "Removed from Wishlist",
         description: "Product removed from your wishlist.",
-        className: "bg-orange-600 text-white border-none",
+        variant: "warning",
       });
     } catch (error: any) {
       // Handle authentication errors
@@ -115,7 +115,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
         toast({
           title: "Session Expired",
           description: "Please login again to continue.",
-          className: "bg-orange-600 text-white border-none",
+          variant: "warning",
         });
         router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
         return;
@@ -124,7 +124,7 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
       toast({
         title: "Error",
         description: "Failed to remove from wishlist. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     }
   };
