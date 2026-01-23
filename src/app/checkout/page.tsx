@@ -19,6 +19,7 @@ import PromoCodeInput from "@/components/PromoCodeInput";
 import { createOrder } from "@/services/orders";
 import { resetCartBootstrap } from "@/services/cart/bootstrap";
 import { useCurrency } from "@/contexts/currency-context";
+import { Country, State, City } from "country-state-city";
 
 export default function CheckoutPage() {
   const { totalAmount, clearCart } = useCartStore();
@@ -33,6 +34,32 @@ export default function CheckoutPage() {
   const [convertedPrices, setConvertedPrices] = useState<{ [key: string]: number }>({});
   const [convertedTotals, setConvertedTotals] = useState<{ subtotal: number; shipping: number; discount: number; grandTotal: number } | null>(null);
   const [calculatedTotal, setCalculatedTotal] = useState(0);
+  const [countries, setCountries] = useState<any[]>([]);
+const [states, setStates] = useState<any[]>([]);
+const [cities, setCities] = useState<any[]>([]);
+
+const [selectedCountry, setSelectedCountry] = useState("");
+const [selectedState, setSelectedState] = useState("");
+const [selectedCity, setSelectedCity] = useState("");
+useEffect(() => {
+  setCountries(Country.getAllCountries());
+}, []);
+useEffect(() => {
+  if (selectedCountry) {
+    const states = State.getStatesOfCountry(selectedCountry);
+    setStates(states);
+    setCities([]);
+    setSelectedState("");
+    setSelectedCity("");
+  }
+}, [selectedCountry]);
+useEffect(() => {
+  if (selectedCountry && selectedState) {
+    const cities = City.getCitiesOfState(selectedCountry, selectedState);
+    setCities(cities);
+    setSelectedCity("");
+  }
+}, [selectedState, selectedCountry]);
 
   // Calculate total from cart items instead of using totalAmount
   const total = calculatedTotal;
@@ -162,9 +189,9 @@ export default function CheckoutPage() {
     const form = e.currentTarget;
     const formData = new FormData(form);
     const address = String(formData.get('address') || '').trim();
-    const city = String(formData.get('city') || '').trim();
-    const state = String(formData.get('state') || '').trim();
-    const country = String(formData.get('country') || '').trim();
+    const city = String(selectedCity);
+    const state =  String(states.find(s => s.isoCode === selectedState)?.name || "");
+    const country = String(countries.find(c => c.isoCode === selectedCountry)?.name || "");
     const zip_code = String(formData.get('zip_code') || '').trim();
 
     try {
@@ -266,17 +293,60 @@ export default function CheckoutPage() {
                     <Input id="address" name="address" required className="rounded-none bg-background/50 border-border" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" name="city" required className="rounded-none bg-background/50 border-border" />
-                  </div>
+  <Label>City</Label>
+  <select
+    name="city"
+    required
+    value={selectedCity}
+    onChange={(e) => setSelectedCity(e.target.value)}
+    disabled={!cities.length}
+    className="w-full h-10 bg-background/50 border border-border px-3"
+  >
+    <option value="">Select City</option>
+    {cities.map((c, index) => (
+      <option key={index} value={c.name}>
+        {c.name}
+      </option>
+    ))}
+  </select>
+</div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" name="state" required className="rounded-none bg-background/50 border-border" />
-                  </div>
+  <Label>State</Label>
+  <select
+    name="state"
+    required
+    value={selectedState}
+    onChange={(e) => setSelectedState(e.target.value)}
+    disabled={!states.length}
+    className="w-full h-10 bg-background/50 border border-border px-3"
+  >
+    <option value="">Select State</option>
+    {states.map((s) => (
+      <option key={s.isoCode} value={s.isoCode}>
+        {s.name}
+      </option>
+    ))}
+  </select>
+</div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input id="country" name="country" required className="rounded-none bg-background/50 border-border" />
-                  </div>
+  <Label>Country</Label>
+  <select
+    name="country"
+    required
+    value={selectedCountry}
+    onChange={(e) => setSelectedCountry(e.target.value)}
+    className="w-full h-10 bg-background/50 border border-border px-3"
+  >
+    <option value="">Select Country</option>
+    {countries.map((c) => (
+      <option key={c.isoCode} value={c.isoCode}>
+        {c.name}
+      </option>
+    ))}
+  </select>
+</div>
                   <div className="space-y-2">
                     <Label htmlFor="zip">ZIP Code</Label>
                     <Input id="zip" name="zip_code" required className="rounded-none bg-background/50 border-border" />

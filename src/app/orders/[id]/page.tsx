@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Package, MapPin, CreditCard, Star } from "lucide-react";
+import { ArrowLeft, Package, MapPin, CreditCard, Star, CheckCircle, Check } from "lucide-react";
 import Layout from "@/components/Layout";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +64,7 @@ export default function OrderDetailPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [orderId, router, session?.accessToken, toast]);
+  }, [orderId, router, session?.accessToken, token, toast]);
 
   // Convert order prices when currency changes
   useEffect(() => {
@@ -373,7 +373,9 @@ export default function OrderDetailPage() {
                   )}
                   {((order.status === 'accepted') || (order.status === 'partially_accepted' && (item as any).item_status === 'accepted')) && (Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === item.product_id) && (
                     <div className="text-sm text-green-600 font-medium flex items-center gap-2">
-                      <Star className="h-4 w-4 fill-current" />
+                      <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
                       Reviewed
                     </div>
                   )}
