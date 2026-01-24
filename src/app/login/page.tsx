@@ -29,6 +29,13 @@ export default function LoginPage() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [verifiedPhone, setVerifiedPhone] = useState(""); // Store verified phone number
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState("");
+  const [isSendingEmailVerification, setIsSendingEmailVerification] = useState(false);
+
+  // Get tab from URL query parameters
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const tab = urlParams?.get('tab');
 
   // Redirect logged-in users away from login page
   useEffect(() => {
@@ -43,13 +50,84 @@ export default function LoginPage() {
       return;
     }
 
-    // Check for callback URL in query params
+    // Check for callback URL and tab in query params
     const urlParams = new URLSearchParams(window.location.search);
     const callbackUrl = urlParams.get('callbackUrl');
+    const tab = urlParams.get('tab');
+    
     if (callbackUrl && session?.user) {
       router.push(callbackUrl);
     }
+    
+    // Tab parameter will be handled by Tabs component defaultValue
   }, [session, status, router]);
+
+  // Check if email was verified (from verification link)
+  useEffect(() => {
+    const checkEmailVerification = () => {
+      const storedEmail = localStorage.getItem("verified_email");
+      const verifiedAt = localStorage.getItem("email_verified_at");
+      
+      if (storedEmail && verifiedAt) {
+        const verifiedTime = parseInt(verifiedAt);
+        const tenMinutes = 10 * 60 * 1000;
+        
+        // Check if verification is still valid (within 10 minutes)
+        if (Date.now() - verifiedTime < tenMinutes) {
+          // If user is logged in, clear verification data (they've already registered)
+          if (session?.user) {
+            localStorage.removeItem("verified_email");
+            localStorage.removeItem("email_verified_at");
+            setIsEmailVerified(false);
+            setVerifiedEmail("");
+            return;
+          }
+          
+          setIsEmailVerified(true);
+          setVerifiedEmail(storedEmail);
+          
+          // Pre-fill email field
+          const emailInput = document.getElementById('reg-email') as HTMLInputElement;
+          if (emailInput) {
+            emailInput.value = storedEmail;
+            // Trigger change event to ensure React recognizes the change
+            const event = new Event('input', { bubbles: true });
+            emailInput.dispatchEvent(event);
+          }
+        } else {
+          // Clear expired verification
+          localStorage.removeItem("verified_email");
+          localStorage.removeItem("email_verified_at");
+          setIsEmailVerified(false);
+          setVerifiedEmail("");
+        }
+      }
+    };
+
+    // Check on component mount
+    checkEmailVerification();
+
+    // Listen for storage changes (for cross-tab updates)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'verified_email' || e.key === 'email_verified_at') {
+        checkEmailVerification();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check when window gets focus (user returns from verification page)
+    const handleFocus = () => {
+      setTimeout(checkEmailVerification, 100); // Small delay to ensure localStorage is updated
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [session]);
 
   // Show loading while checking authentication
   if (isCheckingAuth || status === "loading") {
@@ -103,7 +181,8 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const fullname = formData.get("fullname") as string;
     const username = formData.get("username") as string;
-    const email = formData.get("reg-email") as string;
+    // Use verified email from state instead of FormData (since input is disabled when verified)
+    const email = isEmailVerified ? verifiedEmail : formData.get("reg-email") as string;
     const password = formData.get("reg-password") as string;
     const confirmPassword = formData.get("confirm-password") as string;
     // Use verified phone from state instead of form data (since input is disabled)
@@ -114,6 +193,13 @@ export default function LoginPage() {
     // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email is verified
+    if (!isEmailVerified) {
+      setError("Please verify your email address before registering");
       setIsLoading(false);
       return;
     }
@@ -234,6 +320,52 @@ export default function LoginPage() {
     }
   };
 
+  const handleSendEmailVerification = async () => {
+    const formData = document.getElementById('reg-email') as HTMLInputElement;
+    const email = formData?.value;
+    
+    if (!email) {
+      setError("Please enter an email address");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsSendingEmailVerification(true);
+    setError("");
+
+    try {
+      const response = await fetch('/api/auth/send-email-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (data.status) {
+        toast({
+          title: "Verification Email Sent! 📧",
+          description: "Please check your email and click the verification link",
+          className: "bg-blue-600 text-white border-none",
+        });
+      } else {
+        setError(data.message || "Failed to send verification email");
+      }
+    } catch (error: any) {
+      setError(error.message || "Failed to send verification email");
+    } finally {
+      setIsSendingEmailVerification(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
@@ -247,7 +379,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue={tab === 'register' ? 'register' : 'login'} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
@@ -324,15 +456,42 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-email">Email</Label>
-                    <Input 
-                      id="reg-email" 
-                      name="reg-email"
-                      type="email" 
-                      placeholder="m@example.com" 
-                      required 
-                      className="bg-background/50" 
-                      disabled={isLoading}
-                    />
+                    <div className="flex gap-2">
+                      <Input 
+                        id="reg-email" 
+                        name="reg-email"
+                        type="email" 
+                        placeholder="m@example.com" 
+                        required 
+                        className="bg-background/50 flex-1" 
+                        disabled={isLoading || isEmailVerified}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendEmailVerification}
+                        disabled={isLoading || isSendingEmailVerification || isEmailVerified}
+                        className={`whitespace-nowrap ${isEmailVerified ? 'bg-green-50 border-green-200 text-green-700' : ''}`}
+                      >
+                        {isSendingEmailVerification ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isEmailVerified ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Verified
+                          </>
+                        ) : (
+                          "Verify"
+                        )}
+                      </Button>
+                    </div>
+                    {isEmailVerified && (
+                      <p className="text-sm text-green-600 flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Email verified
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>

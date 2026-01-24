@@ -27,13 +27,13 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "text-foreground before:bg-primary",
+        default: "text-white bg-green-600/70 border-green-400/50 shadow-[0_0_30px_rgba(34,197,94,0.6),0_0_60px_rgba(34,197,94,0.4)] before:bg-green-500 backdrop-blur-md",
         success:
-          "text-white bg-green-600/90 border-green-500/60 shadow-[0_10px_35px_rgba(16,185,129,0.35)] before:bg-green-700",
-        warning: "text-foreground before:bg-amber-500",
-        info: "text-foreground before:bg-sky-500",
+          "text-white bg-green-600/70 border-green-400/50 shadow-[0_0_30px_rgba(34,197,94,0.6),0_0_60px_rgba(34,197,94,0.4)] before:bg-green-500 backdrop-blur-md",
+        warning: "text-white bg-green-600/70 border-green-400/50 shadow-[0_0_30px_rgba(34,197,94,0.6),0_0_60px_rgba(34,197,94,0.4)] before:bg-green-500 backdrop-blur-md",
+        info: "text-white bg-green-600/70 border-green-400/50 shadow-[0_0_30px_rgba(34,197,94,0.6),0_0_60px_rgba(34,197,94,0.4)] before:bg-green-500 backdrop-blur-md",
         destructive:
-          "destructive group border-destructive/40 bg-destructive text-destructive-foreground before:bg-destructive",
+          "text-white bg-orange-600/90 border-orange-500/60 shadow-[0_0_30px_rgba(249,115,22,0.6),0_0_60px_rgba(249,115,22,0.4)] before:bg-orange-500 backdrop-blur-md",
       },
     },
     defaultVariants: {

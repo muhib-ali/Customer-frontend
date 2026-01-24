@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ShoppingCart, Heart, Eye, Star } from "lucide-react";
@@ -244,11 +245,22 @@ export default function ProductCard({ product }: ProductCardProps) {
     <Link href={`/product/${product.id}`} className="block h-full group">
       <Card className="h-full bg-card border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col">
         <div className="relative aspect-square overflow-hidden bg-muted/20 p-4">
-          <img 
-            src={product.image} 
-            alt={product.name} 
-            className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
-          />
+          {product.image ? (
+            <Image 
+              src={product.image} 
+              alt={product.name} 
+              fill
+              className="object-contain object-center transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <div className="text-4xl mb-2">📦</div>
+                <div className="text-sm">No Image</div>
+              </div>
+            </div>
+          )}
           {product.isNew && (
             <span className="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
               New Arrival

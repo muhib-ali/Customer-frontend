@@ -14,7 +14,7 @@ import Layout from "@/components/Layout";
 import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function CategoriesPage() {
+export default function ShopsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -106,7 +106,7 @@ export default function CategoriesPage() {
     if (sortOrder !== 'DESC') params.set('sortOrder', sortOrder);
 
     const queryString = params.toString();
-    router.replace(`/categories${queryString ? `?${queryString}` : ''}`, { scroll: false });
+    router.replace(`/shops${queryString ? `?${queryString}` : ''}`, { scroll: false });
   }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
 
   const toggleBrand = (brandId: string) => {

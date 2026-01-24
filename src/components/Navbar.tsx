@@ -46,7 +46,7 @@ export default function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       // Redirect to categories page with search parameter
-      router.push(`/categories?search=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/shops?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -56,7 +56,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Category", href: "/categories" },
+    { name: "Shop", href: "/shops" },
     { name: "Brands", href: "/brands" },
     { name: "Bulk Order", href: "/bulk-order" },
     { name: "Blog", href: "/blog" },
