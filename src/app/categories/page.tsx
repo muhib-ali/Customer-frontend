@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -83,6 +83,15 @@ export default function CategoriesPage() {
   const pagination = productsData?.data?.pagination;
   const brands = brandsData?.data?.brands || [];
   const categories = categoriesData?.data?.categories || [];
+
+  const spinnerDots = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => ({
+        rotation: index * 30,
+        delay: index * 0.08,
+      })),
+    []
+  );
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -290,7 +299,21 @@ export default function CategoriesPage() {
             {productsLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+                    <div className="red-dot-spinner relative h-12 w-12">
+                      {spinnerDots.map(({ rotation, delay }, index) => (
+                        <span
+                          key={index}
+                          style={
+                            {
+                              "--rotation": `${rotation}deg`,
+                              animationDelay: `${delay}s`,
+                            } as CSSProperties
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
                   <p className="text-muted-foreground">Loading products...</p>
                 </div>
               </div>

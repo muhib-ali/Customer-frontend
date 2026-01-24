@@ -25,7 +25,7 @@ export default function PromoCodeInput({ orderAmount, onPromoCodeApplied, token 
       toast({
         title: "Error",
         description: "Please enter a promo code",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
       return;
     }
@@ -43,20 +43,20 @@ export default function PromoCodeInput({ orderAmount, onPromoCodeApplied, token 
         toast({
           title: "Promo Code Applied!",
           description: `Discount applied: ${result.type === 'percentage' ? result.value + '%' : '$' + result.value}`,
-          className: "bg-green-600 text-white border-none",
+          variant: "success",
         });
       } else {
         toast({
           title: "Invalid Promo Code",
           description: "This promo code is not valid or cannot be applied",
-          className: "bg-red-600 text-white border-none",
+          variant: "destructive",
         });
       }
     } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to validate promo code. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -71,7 +71,7 @@ export default function PromoCodeInput({ orderAmount, onPromoCodeApplied, token 
     toast({
       title: "Promo Code Removed",
       description: "Promo code has been removed",
-      className: "bg-orange-600 text-white border-none",
+      variant: "warning",
     });
   };
 

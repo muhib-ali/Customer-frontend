@@ -113,7 +113,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         toast({
           title: "Cart Conflict",
           description: "Cannot add regular items because your cart already has bulk items. Please clear your cart first.",
-          className: "bg-red-600 text-white border-none",
+          variant: "destructive",
         });
         return;
       }
@@ -125,7 +125,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         toast({
           title: "Cart Conflict",
           description: "Cannot add regular items. You already have bulk items in cart. Please clear your cart first.",
-          className: "bg-red-600 text-white border-none",
+          variant: "destructive",
         });
         return;
       }
@@ -147,7 +147,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       toast({
         title: "Added to Cart",
         description: `${product.name} added to your cart.`,
-        className: "bg-green-600 text-white border-none",
+        variant: "success",
       });
 
       // Refresh cart data from server (will update proper totals + navbar badge)
@@ -161,7 +161,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       toast({
         title: "Error",
         description: "Failed to add to cart. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     } finally {
       setIsCartPending(false);
@@ -201,14 +201,14 @@ export default function ProductCard({ product }: ProductCardProps) {
         toast({
           title: "Removed from Wishlist",
           description: "Product removed from your wishlist.",
-          className: "bg-orange-600 text-white border-none",
+          variant: "warning",
         });
       } else {
         await addToWishlist(product.id, session.accessToken);
         toast({
           title: "Added to Wishlist",
           description: "Product saved for later.",
-          className: "bg-primary text-white border-none",
+          variant: "info",
         });
       }
     } catch (error: any) {
@@ -224,7 +224,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         toast({
           title: "Session Expired",
           description: "Please login again to continue.",
-          className: "bg-orange-600 text-white border-none",
+          variant: "warning",
         });
         router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
         return;
@@ -233,7 +233,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       toast({
         title: "Error",
         description: "Failed to update wishlist. Please try again.",
-        className: "bg-red-600 text-white border-none",
+        variant: "destructive",
       });
     } finally {
       setIsWishlistPending(false);
