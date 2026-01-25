@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { products, categories, brands } from "@/data/mockData";
 import ProductCard from "@/components/ProductCard";
@@ -9,18 +9,43 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import Layout from "@/components/Layout";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function CategoryPage() {
   const params = useParams();
   const categorySlug = params.slug as string;
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [convertedPriceRange, setConvertedPriceRange] = useState([0, 5000]);
   
   const categoryName = categorySlug 
     ? categories.find(c => c.slug === categorySlug)?.name || 'All Products'
     : 'All Products';
+
+  // Convert price range when currency changes
+  useEffect(() => {
+    const convertPriceRange = async () => {
+      try {
+        const targetCurrency = getCurrencyCode();
+        if (targetCurrency !== 'USD') {
+          const [minUSD, maxUSD] = priceRange;
+          const convertedMin = await convertAmount(minUSD, 'USD', targetCurrency);
+          const convertedMax = await convertAmount(maxUSD, 'USD', targetCurrency);
+          setConvertedPriceRange([convertedMin, convertedMax]);
+        } else {
+          setConvertedPriceRange(priceRange);
+        }
+      } catch (error) {
+        console.error('Price range conversion failed:', error);
+        setConvertedPriceRange(priceRange);
+      }
+    };
+
+    convertPriceRange();
+  }, [priceRange, convertAmount, getCurrencyCode]);
 
   const filteredProducts = products.filter(product => {
     if (categorySlug && product.category !== categorySlug) return false;
@@ -68,8 +93,8 @@ export default function CategoryPage() {
                   className="my-4"
                 />
                 <div className="flex items-center justify-between text-sm font-mono">
-                  <span>${priceRange[0]}</span>
-                  <span>${priceRange[1]}+</span>
+                  <span>{getCurrencySymbol()}{convertedPriceRange[0].toLocaleString()}</span>
+                  <span>{getCurrencySymbol()}{convertedPriceRange[1].toLocaleString()}+</span>
                 </div>
               </div>
 

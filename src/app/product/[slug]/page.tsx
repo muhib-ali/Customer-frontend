@@ -2,47 +2,138 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCartStore } from "@/stores/useCartStore";
+import { addToWishlist, removeFromWishlist } from "@/services/wishlist";
+import { bootstrapWishlistOnce, resetWishlistBootstrap } from "@/services/wishlist/bootstrap";
 import { useWishlistStore } from "@/stores/useWishlistStore";
 import { ShoppingCart, Heart, Truck, ShieldCheck, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
-import { useProductBySlug } from "@/services/products";
+import { useProductById } from "@/services/products";
+import { useProductReviews, useProductReviewSummary, useMyReviews, type Review, myReviewsQueryKey } from "@/services/reviews";
+import { Star } from "lucide-react";
+import { useCurrency } from "@/contexts/currency-context";
 
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
-  const slug = params.slug as string;
-  const { data, isLoading, isError, error } = useProductBySlug(slug);
+  const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
+  const id = params.slug as string;
+  const { data, isLoading, isError, error } = useProductById(id);
   const product = data?.data;
+  const [convertedPrice, setConvertedPrice] = useState<number | null>(null);
+  const { data: reviews = [], isLoading: reviewsLoading, error: reviewsError } = useProductReviews(product?.id);
+  const { data: summary, isLoading: summaryLoading } = useProductReviewSummary(product?.id);
+  const { data: myReviews = [], isLoading: myReviewsLoading, error: myReviewsError } = useMyReviews(session?.accessToken);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [isWishlistPending, setIsWishlistPending] = useState(false);
   
-  const addToCart = useCartStore((state) => state.addItem);
-  const { addItem: addToWishlist, isInWishlist } = useWishlistStore();
+  // Check if user has already reviewed this product
+  const hasUserReviewed = product?.id && (Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === product.id);
+  
+  const { canAddRegularItems, setCartType, syncCartFromAPI, addProductId, setCartData } = useCartStore();
   const { toast } = useToast();
 
-  const imageUrls = useMemo(() => {
-    const urls: string[] = [];
+  // Convert product price when currency changes
+  useEffect(() => {
+    const convertProductPrice = async () => {
+      if (!product?.price) return;
+      
+      try {
+        const targetCurrency = getCurrencyCode();
+        if (targetCurrency !== 'USD') {
+          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          setConvertedPrice(converted);
+        } else {
+          setConvertedPrice(null);
+        }
+      } catch (error) {
+        console.error('Product price conversion failed:', error);
+        setConvertedPrice(null);
+      }
+    };
 
-    if (product?.images?.length) {
-      for (const img of product.images) {
-        if (img?.url) urls.push(img.url);
+    convertProductPrice();
+  }, [product?.price, convertAmount, getCurrencyCode]);
+
+  const wishlistIds = useWishlistStore((s) => s.wishlistIds);
+  const setWishlistIds = useWishlistStore((s) => s.setWishlistIds);
+  const addWishlistId = useWishlistStore((s) => s.addWishlistId);
+  const removeWishlistId = useWishlistStore((s) => s.removeWishlistId);
+  const inWishlist = product?.id ? wishlistIds.includes(product.id) : false;
+
+  const renderStars = (rating: number, size = 4) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`w-${size} h-${size} ${
+          i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
+
+  const renderRatingBar = (count: number, total: number, stars: number) => {
+    const percent = total > 0 ? (count / total) * 100 : 0;
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm w-8">{stars}</span>
+        <div className="flex-1 bg-gray-200 rounded-full h-2 relative">
+          <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${percent}%` }} />
+        </div>
+        <span className="text-sm w-8 text-right">{count}</span>
+      </div>
+    );
+  };
+
+  const mediaUrls = useMemo(() => {
+    const urls: Array<{url: string, type: 'image' | 'video'}> = [];
+
+    const normalize = (u: string) => u.trim();
+    const seen = new Set<string>();
+
+    // Always show featured image first (default)
+    if (product?.product_img_url) {
+      const u = normalize(product.product_img_url);
+      if (!seen.has(u)) {
+        urls.push({ url: u, type: 'image' });
+        seen.add(u);
       }
     }
 
-    if (urls.length === 0 && product?.product_img_url) {
-      urls.push(product.product_img_url);
+    // Add video if exists
+    if (product?.product_video_url) {
+      const u = normalize(product.product_video_url);
+      if (!seen.has(u)) {
+        urls.push({ url: u, type: 'video' });
+        seen.add(u);
+      }
+    }
+
+    // Add gallery images (excluding featured duplicates)
+    if (product?.images?.length) {
+      for (const img of product.images) {
+        if (img?.url) {
+          const u = normalize(img.url);
+          if (!seen.has(u)) {
+            urls.push({ url: u, type: 'image' });
+            seen.add(u);
+          }
+        }
+      }
     }
 
     return urls;
   }, [product]);
 
-  const mainImage = activeImage || imageUrls[0] || "";
+  const imageUrls = mediaUrls.filter(m => m.type === 'image').map(m => m.url);
+  const mainMedia = activeImage || mediaUrls[0]?.url || "";
+  const mainMediaType = mediaUrls.find(m => m.url === mainMedia)?.type || 'image';
 
   if (isLoading) {
     return (
@@ -78,29 +169,151 @@ export default function ProductPage() {
     );
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!session?.accessToken) {
       router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
       return;
     }
 
-    // Existing cart store expects the mock Product shape.
-    // Keeping current behavior for now until cart types are fully migrated.
-    addToCart(product as any);
-    toast({
-      title: "Added to Cart",
-      description: `${product.title} has been added to your cart.`,
-      className: "bg-green-600 text-white border-none",
-    });
+    // Always fetch the latest cart directly for conflict detection (not throttled)
+    try {
+      const { getCart } = await import('@/services/cart');
+      const cartRes = await getCart(session.accessToken as string);
+      const items = cartRes?.data?.items || [];
+
+      console.log('Product page - Cart items for conflict check:', items);
+
+      const hasBulk = items.some((i: any) => i.type === 'bulk' || i.cart_type === 'bulk');
+      const hasRegular = items.some((i: any) => (!i.type && !i.cart_type) || i.type === 'regular' || i.cart_type === 'regular');
+
+      console.log('Product page - Conflict check:', { hasBulk, hasRegular, itemCount: items.length });
+
+      // If cart has bulk items already, block regular add + show toast
+      if (hasBulk && !hasRegular && items.length > 0) {
+        console.log('Product page - Blocking regular add due to bulk items in cart');
+        toast({
+          title: "Cart Conflict",
+          description: "Cannot add regular items because your cart already has bulk items. Please clear your cart first.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (e: any) {
+      console.error('Product page - Cart fetch failed:', e);
+      // If cart fetch fails, fall back to store state (best effort)
+      await syncCartFromAPI(session.accessToken);
+      if (!canAddRegularItems()) {
+        toast({
+          title: "Cart Conflict",
+          description: "Cannot add regular items to bulk cart. Please clear your bulk cart first.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      // Import cart service
+      const { addToCart: addToCartService } = await import('@/services/cart');
+      
+      // Optimistic update for instant UI (Go to cart)
+      addProductId(product.id);
+      // Also update navbar badge immediately
+      const optimistic = useCartStore.getState();
+      setCartData(optimistic.cartProductIds, optimistic.totalItems + 1, optimistic.totalAmount);
+
+      // Add to cart via API
+      await addToCartService(product.id, 1, session.accessToken);
+
+      // Refresh cart from API after adding item
+      await syncCartFromAPI(session.accessToken);
+
+      // Set cart type to regular
+      setCartType('regular');
+
+      toast({
+        title: "Added to Cart",
+        description: `${product.title} has been added to your cart.`,
+        className: "bg-green-600 text-white border-none",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to add to cart',
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleWishlist = () => {
+  const handleWishlist = async () => {
     if (!session?.accessToken) {
       router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
       return;
     }
 
-    addToWishlist(product as any);
+    if (!product?.id) return;
+
+    if (isWishlistPending) return;
+
+    const wasInWishlist = wishlistIds.includes(product.id);
+    setIsWishlistPending(true);
+
+    // Optimistic UI update
+    if (wasInWishlist) {
+      removeWishlistId(product.id);
+    } else {
+      addWishlistId(product.id);
+    }
+
+    try {
+      if (wasInWishlist) {
+        await removeFromWishlist(product.id, session.accessToken);
+        toast({
+          title: "Removed from Wishlist",
+          description: "Product removed from your wishlist.",
+          className: "bg-orange-600 text-white border-none",
+        });
+      } else {
+        await addToWishlist(product.id, session.accessToken);
+        toast({
+          title: "Added to Wishlist",
+          description: "Product saved for later.",
+          className: "bg-primary text-white border-none",
+        });
+      }
+
+      // Sync store with backend truth and invalidate the cached bootstrap response.
+      resetWishlistBootstrap();
+      const items = await bootstrapWishlistOnce(session.accessToken);
+      const ids = items.map((i) => i.product?.id || i.product_id).filter(Boolean) as string[];
+      setWishlistIds(ids);
+    } catch (error: any) {
+      // Roll back optimistic update
+      if (wasInWishlist) {
+        addWishlistId(product.id);
+      } else {
+        removeWishlistId(product.id);
+      }
+
+      // Handle authentication errors
+      if (error?.message === 'AUTH_EXPIRED') {
+        toast({
+          title: "Session Expired",
+          description: "Please login again to continue.",
+          className: "bg-orange-600 text-white border-none",
+        });
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/")}`);
+        return;
+      }
+      
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist. Please try again.",
+        className: "bg-red-600 text-white border-none",
+      });
+    } finally {
+      setIsWishlistPending(false);
+    }
   };
 
   return (
@@ -109,22 +322,54 @@ export default function ProductPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           <div className="space-y-4">
             <div className="aspect-square bg-muted/20 border border-border p-8 flex items-center justify-center relative overflow-hidden group">
-              <img 
-                src={mainImage} 
-                alt={product.title} 
-                className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
-              />
+              {mainMediaType === 'video' ? (
+                <video
+                  src={mainMedia}
+                  controls
+                  className="max-w-full max-h-full object-contain"
+                  poster={imageUrls[0] || ''}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img 
+                  src={mainMedia} 
+                  alt={product.title} 
+                  className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                />
+              )}
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
-              {imageUrls.map((img, i) => {
-                const isActive = (activeImage || imageUrls[0]) === img;
+              {mediaUrls.map((media, i) => {
+                const isActive = (activeImage || mediaUrls[0]?.url) === media.url;
                 return (
                   <div
-                    key={`${img}-${i}`}
+                    key={`${media.url}-${i}`}
                     className={`aspect-square bg-muted/20 border p-2 cursor-pointer transition-colors ${isActive ? 'border-primary' : 'border-border hover:border-primary'}`}
-                    onClick={() => setActiveImage(img)}
+                    onClick={() => setActiveImage(media.url)}
                   >
-                    <img src={img} alt="Thumbnail" className={`w-full h-full object-contain ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} />
+                    {media.type === 'video' ? (
+                      <div className="relative w-full h-full">
+                        <img 
+                          src={imageUrls[0] || ''} 
+                          alt="Video thumbnail" 
+                          className={`w-full h-full object-contain ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-black/50 rounded-full p-2">
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <img 
+                        src={media.url} 
+                        alt="Thumbnail" 
+                        className={`w-full h-full object-contain ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                      />
+                    )}
                   </div>
                 );
               })}
@@ -141,8 +386,13 @@ export default function ProductPage() {
             
             <div className="flex items-center gap-4 mb-6">
               <div className="text-4xl font-bold font-heading text-primary">
-                ${Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {getCurrencySymbol()}{(convertedPrice || Number(product.price)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
+              {product.discount && Number(product.discount) > 0 && (
+                <div className="px-3 py-1 bg-red-900/30 text-red-500 text-xs font-bold uppercase tracking-wider border border-red-900">
+                  {product.discount}% OFF
+                </div>
+              )}
               {product.stock_quantity > 0 ? (
                 <div className="px-3 py-1 bg-green-900/30 text-green-500 text-xs font-bold uppercase tracking-wider border border-green-900">
                   In Stock ({product.stock_quantity})
@@ -173,8 +423,9 @@ export default function ProductPage() {
                 variant="outline"
                 className="h-14 rounded-none border-border hover:border-primary hover:text-primary transition-colors"
                 onClick={handleWishlist}
+                disabled={isWishlistPending}
               >
-                <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-current text-primary' : ''}`} />
+                <Heart className={`h-5 w-5 transition-colors ${inWishlist ? 'fill-current text-red-500 hover:text-red-600' : 'hover:text-primary'}`} />
               </Button>
             </div>
 
@@ -225,10 +476,28 @@ export default function ProductPage() {
                   <span className="text-muted-foreground font-medium">SKU</span>
                   <span className="font-mono text-right">{product.sku}</span>
                 </div>
-                <div className="grid grid-cols-2 py-3 border-b border-border/50 last:border-0">
+                <div className="grid grid-cols-2 py-3 border-b border-border/50">
                   <span className="text-muted-foreground font-medium">Stock</span>
                   <span className="font-mono text-right">{product.stock_quantity}</span>
                 </div>
+                <div className="grid grid-cols-2 py-3 border-b border-border/50">
+                  <span className="text-muted-foreground font-medium">Weight</span>
+                  <span className="font-mono text-right">{product.weight} kg</span>
+                </div>
+                <div className="grid grid-cols-2 py-3 border-b border-border/50">
+                  <span className="text-muted-foreground font-medium">Dimensions</span>
+                  <span className="font-mono text-right">{product.length} × {product.width} × {product.height} cm</span>
+                </div>
+                <div className="grid grid-cols-2 py-3 border-b border-border/50">
+                  <span className="text-muted-foreground font-medium">Currency</span>
+                  <span className="font-mono text-right">{product.currency}</span>
+                </div>
+                {product.variants && product.variants.length > 0 && (
+                  <div className="grid grid-cols-2 py-3 border-b border-border/50 last:border-0">
+                    <span className="text-muted-foreground font-medium">Variants</span>
+                    <span className="font-mono text-right">{product.variants.map(v => v.value).join(', ')}</span>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -241,10 +510,113 @@ export default function ProductPage() {
           </TabsContent>
 
           <TabsContent value="reviews" className="pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div className="bg-card border border-border p-8 max-w-2xl text-center py-16">
-               <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
-               <Button variant="outline" className="mt-4 rounded-none">Write a Review</Button>
-             </div>
+            <div className="max-w-4xl">
+              {/* Debug Info */}
+              <div className="bg-yellow-100 text-yellow-800 p-4 mb-4 rounded">
+                <p>Product ID: {product?.id}</p>
+                <p>Loading: {reviewsLoading ? 'Yes' : 'No'}</p>
+                <p>Reviews Count: {reviews?.length || 0}</p>
+                <p>Error: {reviewsError ? (reviewsError as any)?.message : 'None'}</p>
+                <p>My Reviews Count: {myReviews?.length || 0}</p>
+                <p>My Reviews Loading: {myReviewsLoading ? 'Yes' : 'No'}</p>
+                <p>My Reviews Error: {myReviewsError ? (myReviewsError as any)?.message : 'None'}</p>
+                <p>Has User Reviewed: {hasUserReviewed ? 'Yes' : 'No'}</p>
+                <p>User Logged In: {session?.accessToken ? 'Yes' : 'No'}</p>
+                <p>Token: {session?.accessToken ? 'Present' : 'Missing'}</p>
+                {myReviews && Array.isArray(myReviews) && myReviews.map((review: any, idx) => (
+                  <p key={idx} className="text-xs">My Review {idx+1}: {review.productId} - {review.comment}</p>
+                ))}
+              </div>
+              
+              {/* Summary Section */}
+              <div className="bg-card border border-border p-8 mb-8">
+                <h3 className="text-xl font-bold font-heading uppercase mb-6">Customer Reviews</h3>
+                {summaryLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading reviews...</div>
+                ) : summary ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Average Rating */}
+                    <div className="text-center">
+                      <div className="text-5xl font-bold font-heading text-primary">
+                        {summary.averageRating.toFixed(1)}
+                      </div>
+                      <div className="flex justify-center gap-1 my-2">
+                        {renderStars(Math.round(summary.averageRating))}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {summary.totalReviews} review{summary.totalReviews !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    {/* Rating Breakdown */}
+                    <div className="space-y-2">
+                      {[5, 4, 3, 2, 1].map(stars => (
+                        <div key={stars}>
+                          {renderRatingBar(summary.ratingBreakdown[stars.toString()] || 0, summary.totalReviews, stars)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">No reviews yet.</div>
+                )}
+              </div>
+
+              {/* Reviews List */}
+              <div className="bg-card border border-border p-8">
+                <h4 className="text-lg font-bold font-heading uppercase mb-6">Reviews</h4>
+                {reviewsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : reviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="font-semibold">
+                              {review.userId === session?.user?.id ? 'You' : review.customerName}
+                            </div>
+                            <div className="flex gap-1 my-1">
+                              {renderStars(review.rating, 3)}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        {review.isVerifiedPurchase && (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded mb-2">
+                            Verified Purchase
+                          </div>
+                        )}
+                        <p className="text-sm text-foreground mt-2">{review.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {hasUserReviewed ? (
+                      <div>
+                        <p className="mb-4">You have already reviewed this product.</p>
+                        <p className="text-sm">Thank you for your feedback!</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="mb-4">No reviews yet. Be the first to review this product!</p>
+                        {session?.accessToken && (
+                          <Button 
+                            variant="outline" 
+                            className="mt-2 rounded-none"
+                            onClick={() => router.push(`/orders`)}
+                          >
+                            Write a Review
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

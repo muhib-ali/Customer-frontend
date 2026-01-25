@@ -51,6 +51,44 @@
   --sidebar-ring: 358 100% 44%;
 }
 
+.red-dot-spinner {
+  position: relative;
+}
+
+.red-dot-spinner span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 16px;
+  background: var(--primary);
+  border-radius: 999px;
+  transform-origin: center -6px;
+  transform: rotate(var(--rotation, 0deg)) translateY(-18px);
+  animation: red-dot-fade 0.9s linear infinite;
+  animation-delay: var(--delay, 0s);
+  opacity: 0;
+}
+
+.red-dot-spinner span:nth-child(odd) {
+  background: #ff4d4d;
+}
+
+@keyframes red-dot-fade {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) translateY(-18px) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(180deg) translateY(-18px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(360deg) translateY(-18px) scale(0.8);
+  }
+}
+
 .dark {
   /* Dark Mode */
   --background: 0 0% 0%; /* Black */
