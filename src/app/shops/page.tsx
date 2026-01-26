@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useCallback, type CSSProperties, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +14,7 @@ import Layout from "@/components/Layout";
 import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function ShopsPage() {
+function ShopsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -408,5 +408,35 @@ export default function ShopsPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+function ShopsPageLoading() {
+  return (
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold font-heading italic uppercase mb-2">
+            All <span className="text-primary">Products</span>
+          </h1>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <span>Home</span>
+            <span className="mx-2">/</span>
+            <span className="text-primary">All Products</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+export default function ShopsPage() {
+  return (
+    <Suspense fallback={<ShopsPageLoading />}>
+      <ShopsPageContent />
+    </Suspense>
   );
 }
