@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/Layout";
 import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import RingLoader from "@/components/ui/ring-loader";
 
 function ShopsPageContent() {
   const router = useRouter();
@@ -83,15 +84,6 @@ function ShopsPageContent() {
   const pagination = productsData?.data?.pagination;
   const brands = brandsData?.data?.brands || [];
   const categories = categoriesData?.data?.categories || [];
-
-  const spinnerDots = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, index) => ({
-        rotation: index * 30,
-        delay: index * 0.08,
-      })),
-    []
-  );
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -296,25 +288,14 @@ function ShopsPageContent() {
               </div>
             </div>
 
-            {productsLoading ? (
-              <div className="flex items-center justify-center py-16">
+            {productsLoading || isUpdatingFilters ? (
+              <div className="flex flex-col items-center justify-center py-16">
                 <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
-                    <div className="red-dot-spinner relative h-12 w-12">
-                      {spinnerDots.map(({ rotation, delay }, index) => (
-                        <span
-                          key={index}
-                          style={
-                            {
-                              "--rotation": `${rotation}deg`,
-                              animationDelay: `${delay}s`,
-                            } as CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
+                  <div className="mx-auto mb-4">
+                    <RingLoader size="md" />
+                    
                   </div>
-                  <p className="text-muted-foreground">Loading products...</p>
+                  {/* <p className="text-muted-foreground ">Loading products...</p> */}
                 </div>
               </div>
             ) : productsError ? (
@@ -425,8 +406,13 @@ function ShopsPageLoading() {
             <span className="text-primary">All Products</span>
           </div>
         </div>
-        <div className="flex items-center justify-center py-16">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="text-center">
+            <div className="mx-auto mb-4">
+              <RingLoader size="md" />
+            </div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
       </div>
     </Layout>
