@@ -197,20 +197,22 @@ export default function LoginPage() {
       return;
     }
 
+    // VERIFICATION CHECKS COMMENTED OUT FOR TESTING
     // Validate email is verified
-    if (!isEmailVerified) {
-      setError("Please verify your email address before registering");
-      setIsLoading(false);
-      return;
-    }
+    // if (!isEmailVerified) {
+    //   setError("Please verify your email address before registering");
+    //   setIsLoading(false);
+    //   return;
+    // }
 
     // Validate phone is verified
-    if (!isPhoneVerified) {
-      console.log("Phone verification failed. isPhoneVerified:", isPhoneVerified); // Debug log
-      setError("Please verify your phone number before registering");
-      setIsLoading(false);
-      return;
-    }
+    // if (!isPhoneVerified) {
+    //   console.log("Phone verification failed. isPhoneVerified:", isPhoneVerified); // Debug log
+    //   setError("Please verify your phone number before registering");
+    //   setIsLoading(false);
+    //   return;
+    // }
+    // END OF COMMENTED VERIFICATION CHECKS
 
     try {
       await register({
@@ -464,8 +466,10 @@ export default function LoginPage() {
                         placeholder="m@example.com" 
                         required 
                         className="bg-background/50 flex-1" 
-                        disabled={isLoading || isEmailVerified}
+                        disabled={isLoading}
+                        // disabled={isLoading || isEmailVerified}
                       />
+                      {/* EMAIL VERIFY BUTTON COMMENTED OUT FOR TESTING
                       <Button
                         type="button"
                         variant="outline"
@@ -485,13 +489,16 @@ export default function LoginPage() {
                           "Verify"
                         )}
                       </Button>
+                      */}
                     </div>
+                    {/* EMAIL VERIFIED STATUS MESSAGE COMMENTED OUT FOR TESTING
                     {isEmailVerified && (
                       <p className="text-sm text-green-600 flex items-center gap-1">
                         <Check className="h-3 w-3" />
                         Email verified
                       </p>
                     )}
+                    */}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
@@ -503,8 +510,10 @@ export default function LoginPage() {
                         placeholder="+1234567890" 
                         required 
                         className="bg-background/50 flex-1" 
-                        disabled={isLoading || isPhoneVerified}
+                        disabled={isLoading}
+                        // disabled={isLoading || isPhoneVerified}
                       />
+                      {/* PHONE VERIFY BUTTON COMMENTED OUT FOR TESTING
                       <Button
                         type="button"
                         variant="outline"
@@ -524,15 +533,19 @@ export default function LoginPage() {
                           "Verify"
                         )}
                       </Button>
+                      */}
                     </div>
+                    {/* PHONE VERIFIED STATUS MESSAGE COMMENTED OUT FOR TESTING
                     {isPhoneVerified && (
                       <p className="text-sm text-green-600 flex items-center gap-1">
                         <Check className="h-3 w-3" />
                         Phone number verified
                       </p>
                     )}
-                    {/* Debug info */}
+                    */}
+                    {/* DEBUG INFO COMMENTED OUT FOR TESTING
                     <p className="text-xs text-gray-500">Debug: isPhoneVerified = {isPhoneVerified.toString()}</p>
+                    */}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-password">Password</Label>
@@ -569,7 +582,7 @@ export default function LoginPage() {
             </Tabs>
           </CardContent>
           
-          {/* Phone Verification Dialog */}
+          {/* PHONE VERIFICATION DIALOG COMMENTED OUT FOR TESTING
           {showPhoneVerification && (
             <div className="px-6 pb-6">
               <Alert className="mb-4">
@@ -617,6 +630,7 @@ export default function LoginPage() {
               </div>
             </div>
           )}
+          */}
           
           <CardFooter className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
             <Link href="/forgot-password" className="hover:text-primary transition-colors">Forgot your password?</Link>
