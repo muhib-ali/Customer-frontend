@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, type CSSProperties } from "react";
+import { Suspense, useState, useEffect, useMemo, useCallback, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +14,7 @@ import Layout from "@/components/Layout";
 import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function CategoriesPage() {
+function CategoriesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -408,5 +408,13 @@ export default function CategoriesPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+export default function CategoriesPage() {
+  return (
+    <Suspense>
+      <CategoriesPageContent />
+    </Suspense>
   );
 }
