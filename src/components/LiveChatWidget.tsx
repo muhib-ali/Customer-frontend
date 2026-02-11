@@ -4,79 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Loader2, MessageCircle, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { useTheme } from "next-themes";
+import { sendMessageToChat, resetConversation } from "@/services/chatService";
 
 interface Message {
   id: string;
   text: string;
   sender: "user" | "bot";
   timestamp: Date;
-}
-
-type FaqItem = {
-  question: string;
-  answer: string;
-  match?: string[];
-};
-
-const FAQ: FaqItem[] = [
-  {
-    question: "What does KSR Performance sell?",
-    answer:
-      "KSR Performance specializes in high-performance automotive parts, including turbocharging, cooling, and racing components.",
-    match: ["what do you sell", "products", "parts", "ksr"],
-  },
-  {
-    question: "How long does shipping take?",
-    answer:
-      "Shipping time depends on your location and the items in your cart. Share your country (and city if possible) and I’ll guide you on typical timelines.",
-    match: ["shipping", "delivery", "ship", "deliver"],
-  },
-  {
-    question: "What is your return policy?",
-    answer:
-      "If you need to return an item, please keep the packaging and share your order number. I can guide you through the return steps and required details.",
-    match: ["return", "refund", "exchange"],
-  },
-  {
-    question: "How do I track my order?",
-    answer:
-      "You can track orders from the **Order Tracking** page on the website. If you share your order number, I can tell you what to look for.",
-    match: ["track", "tracking", "order status"],
-  },
-  {
-    question: "Do you help with fitment/compatibility?",
-    answer:
-      "Yes. Tell me your car’s year, make, model, engine, and the part you’re considering—and I’ll guide you on what to check for fitment.",
-    match: ["fitment", "compatible", "compatibility", "will it fit"],
-  },
-  {
-    question: "How can I contact support?",
-    answer:
-      "Use the site’s **Contact** section for the fastest support. If you tell me whether it’s about an order, payment, or product, I’ll point you to the right place.",
-    match: ["support", "contact", "help", "agent"],
-  },
-];
-
-function normalize(text: string) {
-  return text.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function getFaqReply(userMessage: string) {
-  const msg = normalize(userMessage);
-
-  for (const item of FAQ) {
-    if (item.match?.some((m) => msg.includes(normalize(m)))) return item.answer;
-    if (normalize(item.question) === msg) return item.answer;
-  }
-
-  return (
-    "I can help with: **shipping**, **returns**, **order tracking**, and **fitment guidance**.\n\n" +
-    "Try asking:\n" +
-    "- How long does shipping take?\n" +
-    "- What is your return policy?\n" +
-    "- How do I track my order?\n" +
-    "- Do you help with fitment?"
-  );
 }
 
 const LiveChatWidget = () => {
@@ -126,8 +60,7 @@ const LiveChatWidget = () => {
     setIsLoading(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 450));
-      const response = getFaqReply(userMessage);
+      const response = await sendMessageToChat(userMessage);
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
         text: response,
@@ -135,10 +68,11 @@ const LiveChatWidget = () => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botResponse]);
-    } catch {
+    } catch (error) {
+      console.error('Chat error:', error);
       const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry — I’m having trouble connecting right now. Please try again or contact KSR support.",
+        text: "Sorry — I'm having trouble connecting right now. Please try again or contact KSR support.",
         sender: "bot",
         timestamp: new Date(),
       };
@@ -156,7 +90,8 @@ const LiveChatWidget = () => {
   };
 
   const quickReplies = [
-    "How long does shipping take?",
+    "What products do you sell?",
+    "How long does shipping take?", 
     "What is your return policy?",
     "How do I track my order?",
   ];
