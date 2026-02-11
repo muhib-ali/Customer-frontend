@@ -55,7 +55,7 @@ export default function BulkOrder() {
   useEffect(() => {
     const convertBulkPrices = async () => {
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedPrices({});
         return;
       }
@@ -65,9 +65,9 @@ export default function BulkOrder() {
       try {
         for (const row of rows) {
           if (row.product && (row.status === 'valid' || row.status === 'out-of-stock')) {
-            const regularPrice = await convertAmount(row.product.price, 'USD', targetCurrency);
-            const offeredPrice = row.offeredPrice ? await convertAmount(row.offeredPrice, 'USD', targetCurrency) : regularPrice;
-            const requestedPrice = row.requestedPrice ? await convertAmount(row.requestedPrice, 'USD', targetCurrency) : offeredPrice;
+            const regularPrice = await convertAmount(row.product.price, 'NOK', targetCurrency);
+            const offeredPrice = row.offeredPrice ? await convertAmount(row.offeredPrice, 'NOK', targetCurrency) : regularPrice;
+            const requestedPrice = row.requestedPrice ? await convertAmount(row.requestedPrice, 'NOK', targetCurrency) : offeredPrice;
             
             conversions[row.id] = {
               regularPrice,

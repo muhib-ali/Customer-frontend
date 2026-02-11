@@ -72,7 +72,7 @@ function HomeContent() {
       if (!bestProductsResponse?.data) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedBestPrices({});
         return;
       }
@@ -81,7 +81,7 @@ function HomeContent() {
       
       try {
         for (const product of bestProductsResponse.data.slice(0, 2)) {
-          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          const converted = await convertAmount(Number(product.price), 'NOK', targetCurrency);
           conversions[product.id] = converted;
         }
         setConvertedBestPrices(conversions);
@@ -220,7 +220,7 @@ function HomeContent() {
                </div>
                <div>
                  <h4 className="font-bold text-sm uppercase">Free Shipping</h4>
-                 <p className="text-xs text-muted-foreground">On all orders over $299</p>
+                 <p className="text-xs text-muted-foreground">On all orders over kr 299</p>
                </div>
             </div>
             <div className="flex items-center gap-4 border-r border-border/50 last:border-0 pr-4">

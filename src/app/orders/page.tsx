@@ -70,7 +70,7 @@ export default function OrdersPage() {
       if (orders.length === 0) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedOrderTotals({});
         return;
       }
@@ -79,7 +79,7 @@ export default function OrdersPage() {
       
       try {
         for (const order of orders) {
-          const converted = await convertAmount(Number(order.total_amount || 0), 'USD', targetCurrency);
+          const converted = await convertAmount(Number(order.total_amount || 0), 'NOK', targetCurrency);
           conversions[order.id] = converted;
         }
         setConvertedOrderTotals(conversions);

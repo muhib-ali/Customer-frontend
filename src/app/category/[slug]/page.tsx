@@ -30,10 +30,10 @@ export default function CategoryPage() {
     const convertPriceRange = async () => {
       try {
         const targetCurrency = getCurrencyCode();
-        if (targetCurrency !== 'USD') {
-          const [minUSD, maxUSD] = priceRange;
-          const convertedMin = await convertAmount(minUSD, 'USD', targetCurrency);
-          const convertedMax = await convertAmount(maxUSD, 'USD', targetCurrency);
+        if (targetCurrency !== 'NOK') {
+          const [minNOK, maxNOK] = priceRange;
+          const convertedMin = await convertAmount(minNOK, 'NOK', targetCurrency);
+          const convertedMax = await convertAmount(maxNOK, 'NOK', targetCurrency);
           setConvertedPriceRange([convertedMin, convertedMax]);
         } else {
           setConvertedPriceRange(priceRange);

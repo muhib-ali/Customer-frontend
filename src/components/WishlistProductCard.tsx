@@ -41,8 +41,8 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
       
       try {
         const targetCurrency = getCurrencyCode();
-        if (targetCurrency !== 'USD') {
-          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+        if (targetCurrency !== 'NOK') {
+          const converted = await convertAmount(Number(product.price), 'NOK', targetCurrency);
           setConvertedPrice(converted);
         } else {
           setConvertedPrice(null);

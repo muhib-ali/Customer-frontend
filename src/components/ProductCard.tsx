@@ -37,11 +37,11 @@ export default function ProductCard({ product }: ProductCardProps) {
     const convertPrice = async () => {
       try {
         const targetCurrency = getCurrencyCode();
-        if (targetCurrency !== 'USD') {
-          const converted = await convertAmount(product.price, 'USD', targetCurrency);
+        if (targetCurrency !== 'NOK') {
+          const converted = await convertAmount(product.price, 'NOK', targetCurrency);
           setConvertedPrice(converted);
         } else {
-          setConvertedPrice(null); // Show original USD price
+          setConvertedPrice(null); // Show original NOK price
         }
       } catch (error) {
         console.error('Price conversion failed:', error);

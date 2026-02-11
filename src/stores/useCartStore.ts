@@ -61,7 +61,7 @@ export const useCartStore = create<CartStore>()(
               summary: {
                 totalItems: args[1] ?? 0,
                 totalAmount: args[2] ?? 0,
-                currency: 'USD',
+                currency: 'NOK',
                 cartType: args[3],
               },
             };

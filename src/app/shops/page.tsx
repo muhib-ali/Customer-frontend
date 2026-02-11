@@ -226,8 +226,8 @@ function ShopsPageContent() {
                   className="my-4"
                 />
                 <div className="flex items-center justify-between text-sm font-mono">
-                  <span>${priceRange[0]}</span>
-                  <span>${priceRange[1]}+</span>
+                  <span>kr {priceRange[0]}</span>
+                  <span>kr {priceRange[1]}+</span>
                 </div>
               </div>
 
