@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         hostname: "localhost",
         port: "3003",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.example.com",
+      },
     ],
   },
   async rewrites() {

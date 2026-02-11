@@ -2,14 +2,14 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useLayoutEffect, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCartStore } from "@/stores/useCartStore";
 import { addToWishlist, removeFromWishlist } from "@/services/wishlist";
 import { bootstrapWishlistOnce, resetWishlistBootstrap } from "@/services/wishlist/bootstrap";
 import { useWishlistStore } from "@/stores/useWishlistStore";
-import { ShoppingCart, Heart, Truck, ShieldCheck, RefreshCw } from "lucide-react";
+import { ShoppingCart, Heart, Truck, ShieldCheck, RefreshCw, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import { useProductById } from "@/services/products";
@@ -26,12 +26,16 @@ export default function ProductPage() {
   const id = params.slug as string;
   const { data, isLoading, isError, error } = useProductById(id);
   const product = data?.data;
+  const descriptionText = product?.description ?? "";
   const [convertedPrice, setConvertedPrice] = useState<number | null>(null);
   const { data: reviews = [], isLoading: reviewsLoading, error: reviewsError } = useProductReviews(product?.id);
   const { data: summary, isLoading: summaryLoading } = useProductReviewSummary(product?.id);
   const { data: myReviews = [], isLoading: myReviewsLoading, error: myReviewsError } = useMyReviews(session?.accessToken);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isWishlistPending, setIsWishlistPending] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [shouldShowReadMore, setShouldShowReadMore] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
   
   // Check if user has already reviewed this product
   const hasUserReviewed = product?.id && (Array.isArray(myReviews) ? myReviews : []).some((review: any) => review.productId === product.id);
@@ -61,6 +65,35 @@ export default function ProductPage() {
     convertProductPrice();
   }, [product?.price, convertAmount, getCurrencyCode]);
 
+  useLayoutEffect(() => {
+    setIsDescriptionExpanded(false);
+    const el = descriptionRef.current;
+    if (!el) {
+      setShouldShowReadMore(false);
+      return;
+    }
+
+    const measureOverflow = () => {
+      const computed = window.getComputedStyle(el);
+      const lineHeight = parseFloat(computed.lineHeight) || 0;
+      if (!lineHeight) {
+        setShouldShowReadMore(el.scrollHeight > el.clientHeight + 1);
+        return;
+      }
+
+      const totalLines = Math.round(el.scrollHeight / lineHeight);
+      setShouldShowReadMore(totalLines > 2);
+    };
+
+    const frame = requestAnimationFrame(measureOverflow);
+    const observer = new ResizeObserver(() => requestAnimationFrame(measureOverflow));
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [descriptionText]);
+
   const wishlistIds = useWishlistStore((s) => s.wishlistIds);
   const setWishlistIds = useWishlistStore((s) => s.setWishlistIds);
   const addWishlistId = useWishlistStore((s) => s.addWishlistId);
@@ -89,6 +122,25 @@ export default function ProductPage() {
         <span className="text-sm w-8 text-right">{count}</span>
       </div>
     );
+  };
+
+  const descriptionBaseStyle: CSSProperties = {
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+  };
+
+  const descriptionClampStyle: CSSProperties = {
+    ...descriptionBaseStyle,
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  };
+
+  const descriptionStyle = isDescriptionExpanded ? descriptionBaseStyle : descriptionClampStyle;
+
+  const handleDescriptionToggle = () => {
+    setIsDescriptionExpanded((prev) => !prev);
   };
 
   const mediaUrls = useMemo(() => {
@@ -320,13 +372,13 @@ export default function ProductPage() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-          <div className="space-y-4">
-            <div className="aspect-square bg-muted/20 border border-border p-8 flex items-center justify-center relative overflow-hidden group">
+          <div className="flex flex-col gap-2">
+            <div className="relative h-[360px] sm:h-[420px] lg:h-[460px] border border-border bg-muted/10 overflow-hidden group">
               {mainMediaType === 'video' ? (
                 <video
                   src={mainMedia}
                   controls
-                  className="max-w-full max-h-full object-contain"
+                  className="absolute inset-0 w-full h-full object-cover"
                   poster={imageUrls[0] || ''}
                 >
                   Your browser does not support the video tag.
@@ -335,17 +387,17 @@ export default function ProductPage() {
                 <img 
                   src={mainMedia} 
                   alt={product.title} 
-                  className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               )}
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
               {mediaUrls.map((media, i) => {
                 const isActive = (activeImage || mediaUrls[0]?.url) === media.url;
                 return (
                   <div
                     key={`${media.url}-${i}`}
-                    className={`aspect-square bg-muted/20 border p-2 cursor-pointer transition-colors ${isActive ? 'border-primary' : 'border-border hover:border-primary'}`}
+                    className={`aspect-square border transition-colors overflow-hidden ${isActive ? 'border-primary' : 'border-border hover:border-primary'}`}
                     onClick={() => setActiveImage(media.url)}
                   >
                     {media.type === 'video' ? (
@@ -353,7 +405,7 @@ export default function ProductPage() {
                         <img 
                           src={imageUrls[0] || ''} 
                           alt="Video thumbnail" 
-                          className={`w-full h-full object-contain ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                          className={`w-full h-full object-cover ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="bg-black/50 rounded-full p-2">
@@ -367,7 +419,7 @@ export default function ProductPage() {
                       <img 
                         src={media.url} 
                         alt="Thumbnail" 
-                        className={`w-full h-full object-contain ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                        className={`w-full h-full object-cover ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
                       />
                     )}
                   </div>
@@ -404,8 +456,27 @@ export default function ProductPage() {
               )}
             </div>
 
-            <div className="prose prose-invert max-w-none mb-8 text-muted-foreground">
-              <p>{product.description || ""}</p>
+            <div className="mb-8 w-full text-muted-foreground">
+              <div className="text-sm font-bold uppercase tracking-wider text-foreground mb-2">
+                Description
+              </div>
+              <p
+                ref={descriptionRef}
+                className="text-base leading-relaxed whitespace-normal"
+                style={descriptionStyle}
+              >
+                {descriptionText}
+              </p>
+              {shouldShowReadMore && (
+                <button
+                  type="button"
+                  onClick={handleDescriptionToggle}
+                  className="mt-2 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-primary"
+                >
+                  <span>{isDescriptionExpanded ? "See Less" : "See More"}</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${isDescriptionExpanded ? "rotate-180" : ""}`} />
+                </button>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
