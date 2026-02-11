@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,7 +16,6 @@ import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useToast } from "@/hooks/use-toast";
 import { useProductReviewSummary } from "@/services/reviews";
 import { useCurrency } from "@/contexts/currency-context";
-import { useEffect } from "react";
 
 interface ProductCardProps {
   product: Product;
@@ -53,7 +52,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   }, [product.price, convertAmount, getCurrencyCode]);
 
   // Get display price
-  const displayPrice = convertedPrice || product.price;
+  const displayPrice = convertedPrice ?? product.price;
   const currencySymbol = getCurrencySymbol();
 
   // Get product rating summary
@@ -241,26 +240,24 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const noImageSrc = "/images/no-image.svg";
+  const imageSrc = product.image || noImageSrc;
+  const [imageFallback, setImageFallback] = useState(imageSrc);
+
   return (
     <Link href={`/product/${product.id}`} className="block h-full group">
       <Card className="h-full bg-card border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col">
         <div className="relative aspect-square overflow-hidden bg-muted/20 p-4">
-          {product.image ? (
-            <Image 
-              src={product.image} 
-              alt={product.name} 
-              fill
-              className="object-contain object-center transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📦</div>
-                <div className="text-sm">No Image</div>
-              </div>
-            </div>
-          )}
+          <Image 
+            src={imageFallback}
+            alt={product.name} 
+            fill
+            className="object-contain object-center transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={() => {
+              if (imageFallback !== noImageSrc) setImageFallback(noImageSrc);
+            }}
+          />
           {product.isNew && (
             <span className="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
               New Arrival
@@ -271,9 +268,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               Low Stock
             </span>
           )}
-          
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-             <Button 
+            <Button 
               size="icon" 
               variant="secondary" 
               className="rounded-full hover:bg-primary hover:text-white border border-transparent hover:border-primary"
@@ -282,7 +278,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             >
               <Heart className={`h-4 w-4 transition-colors ${inWishlist ? 'fill-current text-red-500 hover:text-red-600' : 'hover:text-primary'}`} />
             </Button>
-             <Button 
+            <Button 
               size="icon" 
               variant="secondary" 
               className="rounded-full hover:bg-primary hover:text-white border border-transparent hover:border-primary"
@@ -291,14 +287,11 @@ export default function ProductCard({ product }: ProductCardProps) {
             </Button>
           </div>
         </div>
-        
         <CardContent className="p-4 flex-grow flex flex-col gap-2">
           <div className="text-xs text-muted-foreground uppercase tracking-widest">{product.brand}</div>
           <h3 className="font-heading font-bold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors text-foreground">
             {product.name}
           </h3>
-          
-          {/* Rating Display */}
           <div className="flex items-center gap-2 mt-1">
             <div className="flex items-center gap-1">
               {renderRatingStars(ratingSummary ? Math.round(ratingSummary.averageRating) : 0)}
@@ -307,10 +300,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               {ratingSummary ? `${ratingSummary.averageRating.toFixed(1)} (${ratingSummary.totalReviews})` : "0.0 (0)"}
             </span>
           </div>
-          
           <div className="text-xs text-muted-foreground mt-auto">SKU: {product.sku}</div>
         </CardContent>
-        
         <CardFooter className="p-4 pt-0 flex items-center justify-between gap-3 border-t border-border/50 mt-auto">
           <div className="text-xl font-bold font-heading text-primary shrink-0">
             {currencySymbol}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}

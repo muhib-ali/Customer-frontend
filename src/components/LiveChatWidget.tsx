@@ -89,13 +89,6 @@ const LiveChatWidget = () => {
     }
   };
 
-  const quickReplies = [
-    "What products do you sell?",
-    "How long does shipping take?", 
-    "What is your return policy?",
-    "How do I track my order?",
-  ];
-
   if (!mounted) return null;
 
   return (
@@ -369,45 +362,6 @@ const LiveChatWidget = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {messages.length <= 2 && (
-                  <div
-                    style={{
-                      padding: "0 20px 12px",
-                      backgroundColor: theme === "dark" ? "#000000" : "#ffffff",
-                      display: "flex",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {quickReplies.map((reply) => (
-                      <button
-                        key={reply}
-                        onClick={() => setMessage(reply)}
-                        style={{
-                          padding: "8px 14px",
-                          borderRadius: "20px",
-                          border: theme === "dark" ? "1px solid rgba(148, 163, 184, 0.25)" : "1px solid rgba(0, 0, 0, 0.25)",
-                          background: theme === "dark" ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)",
-                          color: theme === "dark" ? "#e5e7eb" : "#1f2937",
-                          fontSize: "13px",
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.9)";
-                          e.currentTarget.style.color = "#fecaca";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = theme === "dark" ? "rgba(148, 163, 184, 0.25)" : "rgba(0, 0, 0, 0.25)";
-                          e.currentTarget.style.color = theme === "dark" ? "#e5e7eb" : "#1f2937";
-                        }}
-                      >
-                        {reply}
-                      </button>
-                    ))}
-                  </div>
-                )}
 
                 <div
                   style={{

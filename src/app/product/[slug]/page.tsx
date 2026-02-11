@@ -143,6 +143,7 @@ export default function ProductPage() {
     setIsDescriptionExpanded((prev) => !prev);
   };
 
+  const placeholderMedia = "/images/no-image.svg";
   const mediaUrls = useMemo(() => {
     const urls: Array<{url: string, type: 'image' | 'video'}> = [];
 
@@ -184,7 +185,7 @@ export default function ProductPage() {
   }, [product]);
 
   const imageUrls = mediaUrls.filter(m => m.type === 'image').map(m => m.url);
-  const mainMedia = activeImage || mediaUrls[0]?.url || "";
+  const mainMedia = activeImage || mediaUrls[0]?.url || placeholderMedia;
   const mainMediaType = mediaUrls.find(m => m.url === mainMedia)?.type || 'image';
 
   if (isLoading) {
@@ -388,6 +389,11 @@ export default function ProductPage() {
                   src={mainMedia} 
                   alt={product.title} 
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== placeholderMedia) {
+                      e.currentTarget.src = placeholderMedia;
+                    }
+                  }}
                 />
               )}
             </div>
