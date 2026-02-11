@@ -239,6 +239,8 @@ export function useBrands() {
   return useQuery({
     queryKey: ['brands'],
     queryFn: fetchBrands,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -265,5 +267,7 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, type CSSProperties, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/Layout";
-import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
+import { useProducts, useBrands, useCategories, type ProductFilters, type Brand, type Category } from "@/services/products";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import RingLoader from "@/components/ui/ring-loader";
 
@@ -82,8 +82,39 @@ function ShopsPageContent() {
 
   const products = productsData?.data?.products || [];
   const pagination = productsData?.data?.pagination;
-  const brands = brandsData?.data?.brands || [];
-  const categories = categoriesData?.data?.categories || [];
+  const brands = useMemo((): Brand[] => {
+    const d = brandsData?.data;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object' && Array.isArray((d as any).brands)) return (d as any).brands;
+    return [];
+  }, [brandsData]);
+  const categories = useMemo((): Category[] => {
+    const d = categoriesData?.data;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object' && Array.isArray((d as any).categories)) return (d as any).categories;
+    return [];
+  }, [categoriesData]);
+
+  // Pre-select brands from URL (?brand=Name1 or ?brand=Name1,Name2) once brands are loaded
+  const brandParamSynced = useRef(false);
+  useEffect(() => {
+    if (brands.length === 0 || brandParamSynced.current) return;
+    const brandParam = searchParams.get('brand');
+    if (!brandParam) return;
+    const parts = brandParam.split(',').map((n) => n.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    const ids = parts.flatMap((part) => {
+      const byName = brands.find((b: Brand) => b.name.toLowerCase() === part.toLowerCase());
+      if (byName) return [byName.id];
+      const byId = brands.find((b: Brand) => b.id === part);
+      if (byId) return [byId.id];
+      return [];
+    });
+    if (ids.length > 0) {
+      setSelectedBrands(ids);
+      brandParamSynced.current = true;
+    }
+  }, [brands, searchParams]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -146,7 +177,7 @@ function ShopsPageContent() {
               {categoriesLoading ? (
                 <TabsTrigger value="loading" disabled>Loading...</TabsTrigger>
               ) : (
-                categories.map(cat => (
+                categories.map((cat: Category) => (
                   <TabsTrigger key={cat.id} value={cat.id} className="px-6">
                     {cat.name}
                   </TabsTrigger>
@@ -208,7 +239,7 @@ function ShopsPageContent() {
                   <p className="text-sm text-muted-foreground">Loading brands...</p>
                 ) : brands.length > 0 ? (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {brands.map(brand => (
+                    {brands.map((brand: Brand) => (
                       <div key={brand.id} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`brand-${brand.id}`} 

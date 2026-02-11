@@ -80,9 +80,16 @@ function getFaqReply(userMessage: string) {
 }
 
 const LiveChatWidget = () => {
+  const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Avoid hydration mismatch: theme + inline styles serialize differently on server vs client.
+  // Render widget only after mount so server and client output match.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -153,6 +160,8 @@ const LiveChatWidget = () => {
     "What is your return policy?",
     "How do I track my order?",
   ];
+
+  if (!mounted) return null;
 
   return (
     <>
