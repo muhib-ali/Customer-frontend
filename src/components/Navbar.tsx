@@ -57,6 +57,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shops" },
+    { name: "Categories", href: "/categories" },
     { name: "Brands", href: "/brands" },
     { name: "Bulk Order", href: "/bulk-order" },
     { name: "Blog", href: "/blog" },
@@ -125,92 +126,98 @@ export default function Navbar() {
 
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className={`text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors ${pathname === link.href ? 'text-primary' : 'text-muted-foreground'}`}>
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors ${pathname === link.href ? 'text-primary' : 'text-muted-foreground'} ${link.name === 'Bulk Order' ? 'whitespace-nowrap' : ''}`}
+            >
               {link.name}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center max-w-sm w-full relative">
-          <form onSubmit={handleSearch} className="w-full">
-            <Input 
-              placeholder="SEARCH PARTS..." 
-              value={searchQuery}
-              onChange={handleSearchInputChange}
-              className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full h-10 pr-10 pl-4"
-            />
-            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
-              <Search className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
+        <div className="hidden lg:flex items-center gap-3">
+          <div className="w-full max-w-[280px]">
+            <form onSubmit={handleSearch} className="relative w-full">
+              <Input 
+                placeholder="SEARCH PARTS..." 
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full h-10 pr-10 pl-4"
+              />
+              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <CurrencySelector />
-          
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground">
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-          
-          <WishlistCount />
+          <div className="flex items-center gap-2">
+            <CurrencySelector />
+            
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground">
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            
+            <WishlistCount />
 
-          <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors group">
-            <ShoppingCart className="h-6 w-6" />
-            {cartCount > 0 && (
-              <span className="absolute top-0 right-0 h-4 w-4 bg-primary text-[10px] font-bold flex items-center justify-center rounded-full text-white ring-2 ring-background">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full hover:bg-muted text-muted-foreground hover:text-primary">
-                <User className="h-6 w-6" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              {isLoggedIn ? (
-                <>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">My Account</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email || "user@example.com"}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex w-full items-center cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Profile Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/orders" className="flex w-full items-center cursor-pointer">
-                      <Package className="mr-2 h-4 w-4" />
-                      <span>My Orders</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => logout()} className="text-red-500 focus:text-red-500 cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuItem asChild>
-                    <Link href="/login" className="flex w-full items-center cursor-pointer">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      <span>Log in / Register</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </>
+            <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors group">
+              <ShoppingCart className="h-6 w-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 h-4 w-4 bg-primary text-[10px] font-bold flex items-center justify-center rounded-full text-white ring-2 ring-background">
+                  {cartCount}
+                </span>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full hover:bg-muted text-muted-foreground hover:text-primary">
+                  <User className="h-6 w-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                {isLoggedIn ? (
+                  <>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">My Account</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.email || "user@example.com"}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="flex w-full items-center cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Profile Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/orders" className="flex w-full items-center cursor-pointer">
+                        <Package className="mr-2 h-4 w-4" />
+                        <span>My Orders</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => logout()} className="text-red-500 focus:text-red-500 cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/login" className="flex w-full items-center cursor-pointer">
+                        <LogIn className="mr-2 h-4 w-4" />
+                        <span>Log in / Register</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </header>

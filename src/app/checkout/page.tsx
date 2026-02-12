@@ -137,7 +137,7 @@ useEffect(() => {
       if (cartItems.length === 0) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'NOK') {
+      if (targetCurrency === 'USD') {
         setConvertedPrices({});
         setConvertedTotals(null);
         return;
@@ -149,15 +149,15 @@ useEffect(() => {
         // Convert individual item prices
         for (const item of cartItems) {
           const itemTotal = (parseFloat(item.product_price) || 0) * (item.cart_quantity || 0);
-          const converted = await convertAmount(itemTotal, 'NOK', targetCurrency);
+          const converted = await convertAmount(itemTotal, 'USD', targetCurrency);
           conversions[item.cart_id] = converted;
         }
         
         // Convert totals
-        const convertedSubtotal = await convertAmount(total, 'NOK', targetCurrency);
-        const convertedShipping = await convertAmount(shipping, 'NOK', targetCurrency);
-        const convertedDiscount = await convertAmount(discountAmount, 'NOK', targetCurrency);
-        const convertedGrandTotal = await convertAmount(grandTotal, 'NOK', targetCurrency);
+        const convertedSubtotal = await convertAmount(total, 'USD', targetCurrency);
+        const convertedShipping = await convertAmount(shipping, 'USD', targetCurrency);
+        const convertedDiscount = await convertAmount(discountAmount, 'USD', targetCurrency);
+        const convertedGrandTotal = await convertAmount(grandTotal, 'USD', targetCurrency);
         
         setConvertedPrices(conversions);
         setConvertedTotals({
