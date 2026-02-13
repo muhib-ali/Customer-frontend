@@ -1,15 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAllCategories } from "@/services/categories";
 import { getCategoryIcon } from "@/lib/getCategoryIcon";
 
+const PER_PAGE = 9;
+
 export default function CategoriesPage() {
+  const [currentPage, setCurrentPage] = useState(1);
   const { data, isLoading, isError } = useAllCategories();
   const categories = data?.data?.categories ?? [];
+
+  const totalPages = Math.ceil(categories.length / PER_PAGE) || 1;
+  const start = (currentPage - 1) * PER_PAGE;
+  const categoriesForPage = categories.slice(start, start + PER_PAGE);
 
   return (
     <Layout>
@@ -45,7 +53,7 @@ export default function CategoriesPage() {
             </div>
           )}
 
-          {categories.map((category) => (
+          {!isLoading && !isError && categoriesForPage.map((category) => (
             <Link
               key={category.id}
               href={`/categories/${category.id}`}
@@ -73,6 +81,54 @@ export default function CategoriesPage() {
             </Link>
           ))}
         </section>
+
+        {!isLoading && !isError && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-10"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
 
         <div className="mt-16 text-center">
           <p className="text-sm text-muted-foreground">
