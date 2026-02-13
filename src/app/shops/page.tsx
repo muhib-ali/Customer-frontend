@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/Layout";
 import { useProducts, useBrands, useCategories, type ProductFilters, type Brand, type Category } from "@/services/products";
+import { useSubcategoriesByCategory, type SubcategoryItem } from "@/services/categories";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import RingLoader from "@/components/ui/ring-loader";
 
@@ -20,6 +21,7 @@ function ShopsPageContent() {
   const searchParams = useSearchParams();
   
   const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(searchParams.get('subcategory') || 'all');
   const [selectedBrands, setSelectedBrands] = useState<string[]>(
     searchParams.get('brand')?.split(',').filter(Boolean) || []
   );
@@ -40,6 +42,7 @@ function ShopsPageContent() {
     page: currentPage,
     limit: 6,
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
     brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
     minPrice: priceRange[0],
     maxPrice: priceRange[1],
@@ -59,6 +62,7 @@ function ShopsPageContent() {
         page: currentPage,
         limit: 6,
         category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
         brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
         minPrice: priceRange[0],
         maxPrice: priceRange[1],
@@ -68,17 +72,21 @@ function ShopsPageContent() {
         sortOrder,
       });
       setIsUpdatingFilters(false);
-    }, 2000); // 3 second delay
+    }, 2000);
 
     return () => {
       clearTimeout(timer);
       setIsUpdatingFilters(false);
     };
-  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder]);
+  }, [currentPage, selectedCategory, selectedSubcategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder]);
 
   const { data: productsData, isLoading: productsLoading, isError: productsError } = useProducts(debouncedFilters);
   const { data: brandsData, isLoading: brandsLoading } = useBrands();
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: subcategoriesData } = useSubcategoriesByCategory(
+    selectedCategory && selectedCategory !== 'all' ? selectedCategory : null
+  );
+  const subcategories: SubcategoryItem[] = subcategoriesData?.data?.subcategories ?? [];
 
   const products = productsData?.data?.products || [];
   const pagination = productsData?.data?.pagination;
@@ -120,6 +128,7 @@ function ShopsPageContent() {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', currentPage.toString());
     if (selectedCategory !== 'all') params.set('category', selectedCategory);
+    if (selectedSubcategory !== 'all') params.set('subcategory', selectedSubcategory);
     if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
     if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
     if (priceRange[1] < 5000) params.set('maxPrice', priceRange[1].toString());
@@ -130,7 +139,7 @@ function ShopsPageContent() {
 
     const queryString = params.toString();
     router.replace(`/shops${queryString ? `?${queryString}` : ''}`, { scroll: false });
-  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
+  }, [currentPage, selectedCategory, selectedSubcategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
 
   const toggleBrand = (brandId: string) => {
     setSelectedBrands(prev => 
@@ -153,6 +162,12 @@ function ShopsPageContent() {
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
+    setSelectedSubcategory('all');
+    setCurrentPage(1);
+  };
+
+  const handleSubcategoryChange = (subcategoryId: string) => {
+    setSelectedSubcategory(subcategoryId);
     setCurrentPage(1);
   };
 
@@ -208,6 +223,50 @@ function ShopsPageContent() {
                     <Search className="h-4 w-4" />
                   </Button>
                 </form>
+              </div>
+
+              <Separator className="bg-border" />
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold uppercase text-muted-foreground">Category</h4>
+                <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+                  <SelectTrigger className="w-full bg-background border-border rounded-none">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categoriesLoading ? (
+                      <SelectItem value="loading" disabled>Loading...</SelectItem>
+                    ) : (
+                      categories.map((cat: Category) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold uppercase text-muted-foreground">Subcategory</h4>
+                <Select
+                  value={selectedSubcategory}
+                  onValueChange={handleSubcategoryChange}
+                  disabled={!selectedCategory || selectedCategory === 'all'}
+                >
+                  <SelectTrigger className="w-full bg-background border-border rounded-none">
+                    <SelectValue placeholder={selectedCategory && selectedCategory !== 'all' ? 'All Subcategories' : 'Select category first'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subcategories</SelectItem>
+                    {subcategories.map((sub: SubcategoryItem) => (
+                      <SelectItem key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Separator className="bg-border" />

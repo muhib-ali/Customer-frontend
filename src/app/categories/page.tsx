@@ -48,7 +48,7 @@ export default function CategoriesPage() {
           {categories.map((category) => (
             <Link
               key={category.id}
-              href={`/shops?category=${category.id}`}
+              href={`/categories/${category.id}`}
               className="group relative flex flex-col h-48 rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary hover:shadow-xl"
             >
               <div className="flex items-center justify-between mb-3">
