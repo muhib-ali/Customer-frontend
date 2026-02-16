@@ -41,8 +41,8 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
       
       try {
         const targetCurrency = getCurrencyCode();
-        if (targetCurrency !== 'USD') {
-          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+        if (targetCurrency !== 'NOK') {
+          const converted = await convertAmount(Number(product.price), 'NOK', targetCurrency);
           setConvertedPrice(converted);
         } else {
           setConvertedPrice(null);
@@ -129,15 +129,22 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
     }
   };
 
+  const noImageSrc = "/images/no-image.svg";
+  const imageSrc = product.image || noImageSrc;
+  const [imageFallback, setImageFallback] = useState(imageSrc);
+
   return (
     <Link href={`/product/${product.slug}`} className="block h-full group">
       <div className="bg-card text-foreground rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
         {/* Product Image */}
         <div className="relative aspect-square overflow-hidden bg-muted/30">
           <img
-            src={product.image}
+            src={imageFallback}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => {
+              if (imageFallback !== noImageSrc) setImageFallback(noImageSrc);
+            }}
           />
           
           {/* Remove from Wishlist Button - Always visible on wishlist page */}

@@ -175,18 +175,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone: string
   }) => {
     try {
-      const result = await signIn("credentials", {
-        ...userData,
+      // CALL REGISTER API INSTEAD OF LOGIN API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      });
+
+      const data = await response.json();
+
+      if (!data.status) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      const loginResult = await signIn("credentials", {
+        email: userData.email,
+        password: userData.password,
         redirect: false,
       })
 
-      if (result?.error) {
-        throw new Error(result.error)
+      if (loginResult?.error) {
+        throw new Error(loginResult.error)
       }
 
-      if (!result?.ok) {
-        throw new Error("Registration failed")
+      if (!loginResult?.ok) {
+        throw new Error("Login failed")
       }
+
     } catch (error) {
       throw error
     }

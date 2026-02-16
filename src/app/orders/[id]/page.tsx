@@ -72,7 +72,7 @@ export default function OrderDetailPage() {
       if (!order) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedPrices({});
         setConvertedTotals(null);
         return;
@@ -84,7 +84,7 @@ export default function OrderDetailPage() {
         // Convert individual item prices
         for (const item of order.order_items || []) {
           const unitPrice = Number(item.unit_price || 0);
-          const converted = await convertAmount(unitPrice, 'USD', targetCurrency);
+          const converted = await convertAmount(unitPrice, 'NOK', targetCurrency);
           conversions[item.id] = converted;
         }
         
@@ -101,9 +101,9 @@ export default function OrderDetailPage() {
         const displayDiscount = discountAmount > 0 ? discountAmount : Math.max(0, displaySubtotal - totalAmount);
         
         // Convert totals
-        const convertedSubtotal = await convertAmount(displaySubtotal, 'USD', targetCurrency);
-        const convertedDiscount = await convertAmount(displayDiscount, 'USD', targetCurrency);
-        const convertedTotal = await convertAmount(totalAmount, 'USD', targetCurrency);
+        const convertedSubtotal = await convertAmount(displaySubtotal, 'NOK', targetCurrency);
+        const convertedDiscount = await convertAmount(displayDiscount, 'NOK', targetCurrency);
+        const convertedTotal = await convertAmount(totalAmount, 'NOK', targetCurrency);
         
         setConvertedPrices(conversions);
         setConvertedTotals({

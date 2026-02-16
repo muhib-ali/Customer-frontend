@@ -154,6 +154,7 @@ export interface ProductFilters {
   page?: number;
   limit?: number;
   category?: string;
+  subcategory?: string;
   brand?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -183,6 +184,7 @@ export async function fetchProducts(filters: ProductFilters = {}): Promise<ApiRe
   if (filters.page) params.append('page', filters.page.toString());
   if (filters.limit) params.append('limit', filters.limit.toString());
   if (filters.category) params.append('category', filters.category);
+  if (filters.subcategory) params.append('subcategory', filters.subcategory);
   if (filters.brand) params.append('brand', filters.brand);
   if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString());
   if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString());
@@ -239,6 +241,8 @@ export function useBrands() {
   return useQuery({
     queryKey: ['brands'],
     queryFn: fetchBrands,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -265,5 +269,7 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }

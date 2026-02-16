@@ -2,6 +2,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import WishlistBootstrapper from "./WishlistBootstrapper";
 import CartBootstrapper from "./CartBootstrapper";
+import LiveChatWidget from "./LiveChatWidget";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export default function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
+      <LiveChatWidget />
     </div>
   );
 }

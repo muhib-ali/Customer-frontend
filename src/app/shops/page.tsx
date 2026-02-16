@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, type CSSProperties, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,14 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/Layout";
-import { useProducts, useBrands, useCategories, type ProductFilters } from "@/services/products";
+import { useProducts, useBrands, useCategories, type ProductFilters, type Brand, type Category } from "@/services/products";
+import { useSubcategoriesByCategory, type SubcategoryItem } from "@/services/categories";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import RingLoader from "@/components/ui/ring-loader";
 
 function ShopsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(searchParams.get('subcategory') || 'all');
   const [selectedBrands, setSelectedBrands] = useState<string[]>(
     searchParams.get('brand')?.split(',').filter(Boolean) || []
   );
@@ -39,6 +42,7 @@ function ShopsPageContent() {
     page: currentPage,
     limit: 6,
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
     brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
     minPrice: priceRange[0],
     maxPrice: priceRange[1],
@@ -49,6 +53,7 @@ function ShopsPageContent() {
   });
 
   const [isUpdatingFilters, setIsUpdatingFilters] = useState(false);
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
 
   // Debounce effect - wait 3 seconds after user stops changing filters
   useEffect(() => {
@@ -58,6 +63,7 @@ function ShopsPageContent() {
         page: currentPage,
         limit: 6,
         category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
         brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
         minPrice: priceRange[0],
         maxPrice: priceRange[1],
@@ -67,36 +73,63 @@ function ShopsPageContent() {
         sortOrder,
       });
       setIsUpdatingFilters(false);
-    }, 2000); // 3 second delay
+    }, 2000);
 
     return () => {
       clearTimeout(timer);
       setIsUpdatingFilters(false);
     };
-  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder]);
+  }, [currentPage, selectedCategory, selectedSubcategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder]);
 
   const { data: productsData, isLoading: productsLoading, isError: productsError } = useProducts(debouncedFilters);
   const { data: brandsData, isLoading: brandsLoading } = useBrands();
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: subcategoriesData } = useSubcategoriesByCategory(
+    selectedCategory && selectedCategory !== 'all' ? selectedCategory : null
+  );
+  const subcategories: SubcategoryItem[] = subcategoriesData?.data?.subcategories ?? [];
 
   const products = productsData?.data?.products || [];
   const pagination = productsData?.data?.pagination;
-  const brands = brandsData?.data?.brands || [];
-  const categories = categoriesData?.data?.categories || [];
+  const brands = useMemo((): Brand[] => {
+    const d = brandsData?.data;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object' && Array.isArray((d as any).brands)) return (d as any).brands;
+    return [];
+  }, [brandsData]);
+  const categories = useMemo((): Category[] => {
+    const d = categoriesData?.data;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object' && Array.isArray((d as any).categories)) return (d as any).categories;
+    return [];
+  }, [categoriesData]);
 
-  const spinnerDots = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, index) => ({
-        rotation: index * 30,
-        delay: index * 0.08,
-      })),
-    []
-  );
+  // Pre-select brands from URL (?brand=Name1 or ?brand=Name1,Name2) once brands are loaded
+  const brandParamSynced = useRef(false);
+  useEffect(() => {
+    if (brands.length === 0 || brandParamSynced.current) return;
+    const brandParam = searchParams.get('brand');
+    if (!brandParam) return;
+    const parts = brandParam.split(',').map((n) => n.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    const ids = parts.flatMap((part) => {
+      const byName = brands.find((b: Brand) => b.name.toLowerCase() === part.toLowerCase());
+      if (byName) return [byName.id];
+      const byId = brands.find((b: Brand) => b.id === part);
+      if (byId) return [byId.id];
+      return [];
+    });
+    if (ids.length > 0) {
+      setSelectedBrands(ids);
+      brandParamSynced.current = true;
+    }
+  }, [brands, searchParams]);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set('page', currentPage.toString());
     if (selectedCategory !== 'all') params.set('category', selectedCategory);
+    if (selectedSubcategory !== 'all') params.set('subcategory', selectedSubcategory);
     if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
     if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
     if (priceRange[1] < 5000) params.set('maxPrice', priceRange[1].toString());
@@ -107,7 +140,7 @@ function ShopsPageContent() {
 
     const queryString = params.toString();
     router.replace(`/shops${queryString ? `?${queryString}` : ''}`, { scroll: false });
-  }, [currentPage, selectedCategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
+  }, [currentPage, selectedCategory, selectedSubcategory, selectedBrands, priceRange, inStockOnly, searchQuery, sortBy, sortOrder, router]);
 
   const toggleBrand = (brandId: string) => {
     setSelectedBrands(prev => 
@@ -130,6 +163,12 @@ function ShopsPageContent() {
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
+    setSelectedSubcategory('all');
+    setCurrentPage(1);
+  };
+
+  const handleSubcategoryChange = (subcategoryId: string) => {
+    setSelectedSubcategory(subcategoryId);
     setCurrentPage(1);
   };
 
@@ -149,18 +188,53 @@ function ShopsPageContent() {
 
         <div className="mb-6">
           <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full">
-            <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
-              <TabsTrigger value="all" className="px-6">All Categories</TabsTrigger>
-              {categoriesLoading ? (
-                <TabsTrigger value="loading" disabled>Loading...</TabsTrigger>
-              ) : (
-                categories.map(cat => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="px-6">
-                    {cat.name}
+            <div className="relative flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full border-border bg-background hover:bg-muted"
+                onClick={() => {
+                  categoriesScrollRef.current?.scrollBy({ left: -200, behavior: "smooth" });
+                }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous categories</span>
+              </Button>
+              <div
+                ref={categoriesScrollRef}
+                className="flex-1 overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-thin"
+              >
+                <TabsList className="inline-flex w-max min-w-full justify-start gap-0 rounded-lg border border-border bg-muted/50 p-1">
+                  <TabsTrigger value="all" className="px-6 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    All Categories
                   </TabsTrigger>
-                ))
-              )}
-            </TabsList>
+                  {categoriesLoading ? (
+                    <span className="inline-flex items-center justify-center px-6 py-2 text-sm text-muted-foreground">
+                      Loading...
+                    </span>
+                  ) : (
+                    categories.map((cat: Category) => (
+                      <TabsTrigger key={cat.id} value={cat.id} className="px-6 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        {cat.name}
+                      </TabsTrigger>
+                    ))
+                  )}
+                </TabsList>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-full border-border bg-background hover:bg-muted"
+                onClick={() => {
+                  categoriesScrollRef.current?.scrollBy({ left: 200, behavior: "smooth" });
+                }}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next categories</span>
+              </Button>
+            </div>
           </Tabs>
         </div>
 
@@ -190,6 +264,50 @@ function ShopsPageContent() {
               <Separator className="bg-border" />
 
               <div className="space-y-4">
+                <h4 className="text-sm font-semibold uppercase text-muted-foreground">Category</h4>
+                <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+                  <SelectTrigger className="w-full bg-background border-border rounded-none">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categoriesLoading ? (
+                      <SelectItem value="loading" disabled>Loading...</SelectItem>
+                    ) : (
+                      categories.map((cat: Category) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold uppercase text-muted-foreground">Subcategory</h4>
+                <Select
+                  value={selectedSubcategory}
+                  onValueChange={handleSubcategoryChange}
+                  disabled={!selectedCategory || selectedCategory === 'all'}
+                >
+                  <SelectTrigger className="w-full bg-background border-border rounded-none">
+                    <SelectValue placeholder={selectedCategory && selectedCategory !== 'all' ? 'All Subcategories' : 'Select category first'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subcategories</SelectItem>
+                    {subcategories.map((sub: SubcategoryItem) => (
+                      <SelectItem key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator className="bg-border" />
+
+              <div className="space-y-4">
                 <h4 className="text-sm font-semibold uppercase text-muted-foreground">Price Range</h4>
                 <Slider
                   defaultValue={[0, 5000]}
@@ -203,8 +321,8 @@ function ShopsPageContent() {
                   className="my-4"
                 />
                 <div className="flex items-center justify-between text-sm font-mono">
-                  <span>${priceRange[0]}</span>
-                  <span>${priceRange[1]}+</span>
+                  <span>kr {priceRange[0]}</span>
+                  <span>kr {priceRange[1]}+</span>
                 </div>
               </div>
 
@@ -216,7 +334,7 @@ function ShopsPageContent() {
                   <p className="text-sm text-muted-foreground">Loading brands...</p>
                 ) : brands.length > 0 ? (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {brands.map(brand => (
+                    {brands.map((brand: Brand) => (
                       <div key={brand.id} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`brand-${brand.id}`} 
@@ -296,25 +414,14 @@ function ShopsPageContent() {
               </div>
             </div>
 
-            {productsLoading ? (
-              <div className="flex items-center justify-center py-16">
+            {productsLoading || isUpdatingFilters ? (
+              <div className="flex flex-col items-center justify-center py-16">
                 <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
-                    <div className="red-dot-spinner relative h-12 w-12">
-                      {spinnerDots.map(({ rotation, delay }, index) => (
-                        <span
-                          key={index}
-                          style={
-                            {
-                              "--rotation": `${rotation}deg`,
-                              animationDelay: `${delay}s`,
-                            } as CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
+                  <div className="mx-auto mb-4">
+                    <RingLoader size="md" />
+                    
                   </div>
-                  <p className="text-muted-foreground">Loading products...</p>
+                  {/* <p className="text-muted-foreground ">Loading products...</p> */}
                 </div>
               </div>
             ) : productsError ? (
@@ -425,8 +532,13 @@ function ShopsPageLoading() {
             <span className="text-primary">All Products</span>
           </div>
         </div>
-        <div className="flex items-center justify-center py-16">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="text-center">
+            <div className="mx-auto mb-4">
+              <RingLoader size="md" />
+            </div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
       </div>
     </Layout>

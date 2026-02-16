@@ -4,7 +4,7 @@ let lastToken: string | null = null;
 let inFlight: Promise<CartData> | null = null;
 
 export async function bootstrapCartOnce(token: string): Promise<CartData> {
-  if (!token) return { items: [], summary: { totalItems: 0, totalAmount: 0, currency: 'USD' } };
+  if (!token) return { items: [], summary: { totalItems: 0, totalAmount: 0, currency: 'NOK' } };
 
   if (lastToken !== token) {
     lastToken = token;
@@ -12,7 +12,7 @@ export async function bootstrapCartOnce(token: string): Promise<CartData> {
   }
 
   if (!inFlight) {
-    inFlight = getCart(token).then((res) => res.data || { items: [], summary: { totalItems: 0, totalAmount: 0, currency: 'USD' } });
+    inFlight = getCart(token).then((res) => res.data || { items: [], summary: { totalItems: 0, totalAmount: 0, currency: 'NOK' } });
   }
 
   return inFlight;

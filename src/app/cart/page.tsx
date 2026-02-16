@@ -75,7 +75,7 @@ export default function CartPage() {
       if (cartItems.length === 0) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedPrices({});
         setConvertedTotal(null);
         return;
@@ -91,12 +91,12 @@ export default function CartPage() {
             ? (typeof item.offered_price_per_unit === 'number' ? item.offered_price_per_unit : parseFloat((item as any).cart_offered_price_per_unit) || parseFloat(item.product_price) || 0)
             : (parseFloat(item.product_price) || 0);
           
-          const converted = await convertAmount(unitPrice, 'USD', targetCurrency);
+          const converted = await convertAmount(unitPrice, 'NOK', targetCurrency);
           conversions[item.cart_id] = converted;
         }
         
         // Convert total amount
-        const convertedTotalAmount = await convertAmount(calculatedTotalAmount, 'USD', targetCurrency);
+        const convertedTotalAmount = await convertAmount(calculatedTotalAmount, 'NOK', targetCurrency);
         
         setConvertedPrices(conversions);
         setConvertedTotal(convertedTotalAmount);

@@ -39,9 +39,6 @@ export async function fetchBrands(): Promise<BrandItem[]> {
 
   const json: BrandsResponse = await response.json();
 
-  // Debug: log the response to see actual structure
-  console.log('Brands API response:', json);
-
   // Handle different possible response structures
   let brandsArray: any[] = [];
   
@@ -69,5 +66,7 @@ export function useBrands() {
   return useQuery({
     queryKey: brandsQueryKey,
     queryFn: fetchBrands,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }

@@ -12,6 +12,8 @@ import { Category, useFeaturedCategories } from "@/services/categories";
 import { useNewArrivals } from "@/services/products/new-arrivals";
 import { useBestProducts } from "@/services/best-products";
 import { useCurrency } from "@/contexts/currency-context";
+import { useBrands } from "@/services/brands";
+import { getAllBlogs, type BlogItem } from "@/services/blogs";
 import { useState, useEffect } from "react";
 
 function HomeContent() {
@@ -39,13 +41,38 @@ function HomeContent() {
 
   const newArrivals = newArrivalsResponse?.data?.slice(0, 4) || [];
 
+  const { data: brandsData } = useBrands();
+  const homeBrands = Array.isArray(brandsData) ? brandsData.slice(0, 4) : [];
+
+  const [blogPosts, setBlogPosts] = useState<BlogItem[]>([]);
+  const [blogsLoading, setBlogsLoading] = useState(true);
+  const [blogsError, setBlogsError] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBlogs = async () => {
+      try {
+        setBlogsLoading(true);
+        const response = await getAllBlogs({ limit: 3, sort_by: "created_at", order: "DESC" });
+        if (!cancelled && response.success && response.data?.blogs) {
+          setBlogPosts(response.data.blogs.slice(0, 3));
+        }
+      } catch (err: any) {
+        if (!cancelled) setBlogsError(err?.message || "Failed to load blogs");
+      } finally {
+        if (!cancelled) setBlogsLoading(false);
+      }
+    };
+    fetchBlogs();
+    return () => { cancelled = true; };
+  }, []);
+
   // Convert best products prices when currency changes
   useEffect(() => {
     const convertBestProductsPrices = async () => {
       if (!bestProductsResponse?.data) return;
       
       const targetCurrency = getCurrencyCode();
-      if (targetCurrency === 'USD') {
+      if (targetCurrency === 'NOK') {
         setConvertedBestPrices({});
         return;
       }
@@ -54,7 +81,7 @@ function HomeContent() {
       
       try {
         for (const product of bestProductsResponse.data.slice(0, 2)) {
-          const converted = await convertAmount(Number(product.price), 'USD', targetCurrency);
+          const converted = await convertAmount(Number(product.price), 'NOK', targetCurrency);
           conversions[product.id] = converted;
         }
         setConvertedBestPrices(conversions);
@@ -193,7 +220,7 @@ function HomeContent() {
                </div>
                <div>
                  <h4 className="font-bold text-sm uppercase">Free Shipping</h4>
-                 <p className="text-xs text-muted-foreground">On all orders over $299</p>
+                 <p className="text-xs text-muted-foreground">On all orders over kr 299</p>
                </div>
             </div>
             <div className="flex items-center gap-4 border-r border-border/50 last:border-0 pr-4">
@@ -279,7 +306,7 @@ function HomeContent() {
                        <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1 group-hover:text-primary transition-colors duration-300">{cat.name}</h3>
                        <span className="text-xs text-muted-foreground group-hover:text-primary/80 transition-colors duration-300">{cat.productCount} Products</span>
                      </div>
-                     <Link href={`/category/${cat.id}`}>
+                     <Link href={`/shops?category=${cat.id}`}>
                        <Button size="sm" className="h-8 text-xs font-bold uppercase rounded-sm bg-primary text-white hover:bg-primary/90 hover:scale-105 transition-all duration-300">
                          Shop Now
                        </Button>
@@ -628,11 +655,20 @@ function HomeContent() {
                 Shop By Brands
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                <span className="hover:text-foreground transition-colors">Garrett</span>
-                <span className="hover:text-foreground transition-colors">BorgWarner</span>
-                <span className="hover:text-foreground transition-colors">Precision Turbo</span>
-                <span className="hover:text-foreground transition-colors">HKS</span>
-                <span className="hover:text-foreground transition-colors">Greddy</span>
+                {homeBrands.length > 0 ? (
+                  homeBrands.map((brand) => (
+                    <Link key={brand.id} href={`/shops?brand=${encodeURIComponent(brand.name)}`} className="hover:text-foreground transition-colors">
+                      {brand.name}
+                    </Link>
+                  ))
+                ) : (
+                  <>
+                    <span className="hover:text-foreground transition-colors">Garrett</span>
+                    <span className="hover:text-foreground transition-colors">BorgWarner</span>
+                    <span className="hover:text-foreground transition-colors">Precision Turbo</span>
+                    <span className="hover:text-foreground transition-colors">HKS</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -647,79 +683,49 @@ function HomeContent() {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Link href="/blog/1" className="group block">
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="relative aspect-[16/9]">
-                    <img
-                      src="/assets/generated_images/car_engine_bay_instagram_shot.png"
-                      alt="Turbo Sizing Guide"
-                      onError={(e) => {
-                        e.currentTarget.src = "/assets/image_1765226772040.png";
-                      }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <span className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
-                      Oct 15
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <div className="text-sm font-bold font-heading uppercase">Turbo Sizing Guide</div>
-                    <div className="mt-2 text-primary text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1">
-                      Read Article <ArrowRight className="h-3.5 w-3.5" />
+            {blogsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="relative aspect-[16/9] bg-muted animate-pulse" />
+                    <div className="p-4">
+                      <div className="h-5 bg-muted animate-pulse rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-muted animate-pulse rounded w-24" />
                     </div>
                   </div>
-                </div>
-              </Link>
-
-              <Link href="/blog/2" className="group block">
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="relative aspect-[16/9]">
-                    <img
-                      src="/assets/generated_images/racing_car_on_track_instagram_shot.png"
-                      alt="Track Day Prep"
-                      onError={(e) => {
-                        e.currentTarget.src = "/assets/image_1765226772040.png";
-                      }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <span className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
-                      Oct 12
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <div className="text-sm font-bold font-heading uppercase">Track Day Prep</div>
-                    <div className="mt-2 text-primary text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1">
-                      Read Article <ArrowRight className="h-3.5 w-3.5" />
+                ))}
+              </div>
+            ) : blogsError ? (
+              <div className="text-center py-8 text-muted-foreground">{blogsError}</div>
+            ) : blogPosts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {blogPosts.map((post) => (
+                  <Link key={post.id} href={`/blog/${post.id}`} className="group block">
+                    <div className="overflow-hidden rounded-lg border border-border bg-card">
+                      <div className="relative aspect-[16/9]">
+                        <img
+                          src={post.blog_img || "/assets/image_1765226772040.png"}
+                          alt={post.heading}
+                          onError={(e) => {
+                            e.currentTarget.src = "/assets/image_1765226772040.png";
+                          }}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <span className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
+                          {new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-sm font-bold font-heading uppercase">{post.heading}</div>
+                        <div className="mt-2 text-primary text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                          Read Article <ArrowRight className="h-3.5 w-3.5" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </Link>
-
-              <Link href="/blog/3" className="group block">
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="relative aspect-[16/9]">
-                    <img
-                      src="/assets/generated_images/mechanic_working_instagram_shot.png"
-                      alt="Titanium Exhausts"
-                      onError={(e) => {
-                        e.currentTarget.src = "/assets/image_1765226772040.png";
-                      }}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <span className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
-                      Oct 08
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <div className="text-sm font-bold font-heading uppercase">Titanium Exhausts</div>
-                    <div className="mt-2 text-primary text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1">
-                      Read Article <ArrowRight className="h-3.5 w-3.5" />
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </div>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
 
             <div className="mt-10 flex justify-center">
               <Link href="/blog">
