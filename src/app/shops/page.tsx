@@ -45,7 +45,7 @@ function ShopsPageContent() {
     subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
     brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
     minPrice: priceRange[0],
-    maxPrice: priceRange[1],
+    maxPrice: priceRange[1] === 5000 ? undefined : priceRange[1],
     stock: inStockOnly ? 'in' : 'all',
     search: searchQuery || undefined,
     sortBy: sortBy as 'price' | 'created_at' | 'title' | 'stock_quantity',
@@ -66,7 +66,7 @@ function ShopsPageContent() {
         subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
         brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
         minPrice: priceRange[0],
-        maxPrice: priceRange[1],
+        maxPrice: priceRange[1] === 5000 ? undefined : priceRange[1],
         stock: inStockOnly ? 'in' : 'all',
         search: searchQuery || undefined,
         sortBy: sortBy as 'price' | 'created_at' | 'title' | 'stock_quantity',
@@ -132,7 +132,7 @@ function ShopsPageContent() {
     if (selectedSubcategory !== 'all') params.set('subcategory', selectedSubcategory);
     if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
     if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
-    if (priceRange[1] < 5000) params.set('maxPrice', priceRange[1].toString());
+    if (priceRange[1] !== 5000) params.set('maxPrice', priceRange[1].toString());
     if (inStockOnly) params.set('stock', 'in');
     if (searchQuery) params.set('search', searchQuery);
     if (sortBy !== 'created_at') params.set('sortBy', sortBy);
