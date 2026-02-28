@@ -245,8 +245,8 @@ export default function ProductCard({ product }: ProductCardProps) {
   const [imageFallback, setImageFallback] = useState(imageSrc);
 
   return (
-    <Link href={`/product/${product.id}`} className="block h-full group">
-      <Card className="h-full bg-card border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col">
+    <Link href={`/product/${product.id}`} className="block h-full group min-w-0">
+      <Card className="h-full bg-card border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col min-w-0">
         <div className="relative aspect-square overflow-hidden bg-muted/20 p-4">
           <Image 
             src={imageFallback}
@@ -287,43 +287,43 @@ export default function ProductCard({ product }: ProductCardProps) {
             </Button>
           </div>
         </div>
-        <CardContent className="p-4 flex-grow flex flex-col gap-2">
-          <div className="text-xs text-muted-foreground uppercase tracking-widest">{product.brand}</div>
-          <h3 className="font-heading font-bold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors text-foreground">
+        <CardContent className="p-4 flex-grow flex flex-col gap-2 min-w-0">
+          <div className="text-xs text-muted-foreground uppercase tracking-widest truncate">{product.brand}</div>
+          <h3 className="font-heading font-bold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors text-foreground min-w-0">
             {product.name}
           </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 mt-1 min-w-0">
+            <div className="flex items-center gap-1 shrink-0">
               {renderRatingStars(ratingSummary ? Math.round(ratingSummary.averageRating) : 0)}
             </div>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground truncate min-w-0">
               {ratingSummary ? `${ratingSummary.averageRating.toFixed(1)} (${ratingSummary.totalReviews})` : "0.0 (0)"}
             </span>
           </div>
-          <div className="text-xs text-muted-foreground mt-auto">SKU: {product.sku}</div>
+          <div className="text-xs text-muted-foreground mt-auto truncate min-w-0">SKU: {product.sku}</div>
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex items-center justify-between gap-3 border-t border-border/50 mt-auto">
-          <div className="text-xl font-bold font-heading text-primary shrink-0">
+        <CardFooter className="p-4 pt-0 flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-t border-border/50 mt-auto min-w-0">
+          <div className="text-xl font-bold font-heading text-primary min-w-0 overflow-hidden truncate">
             {currencySymbol}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           {inCart ? (
             <Button
               onClick={handleGoToCart}
               size="sm"
-              className="w-[150px] bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md"
+              className="min-w-0 w-full sm:w-[150px] max-w-full shrink-0 bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md"
             >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Go to Cart
+              <ShoppingCart className="mr-2 h-4 w-4 shrink-0" />
+              <span className="truncate">Go to Cart</span>
             </Button>
           ) : (
             <Button
               onClick={handleAddToCart}
               size="sm"
               disabled={isCartPending}
-              className="w-[150px] bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md disabled:opacity-50"
+              className="min-w-0 w-full sm:w-[150px] max-w-full shrink-0 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider rounded-none transition-all duration-300 group-hover:shadow-md disabled:opacity-50"
             >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              {isCartPending ? "Adding..." : "Add to Cart"}
+              <ShoppingCart className="mr-2 h-4 w-4 shrink-0" />
+              <span className="truncate">{isCartPending ? "Adding..." : "Add to Cart"}</span>
             </Button>
           )}
         </CardFooter>
