@@ -134,8 +134,8 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
   const [imageFallback, setImageFallback] = useState(imageSrc);
 
   return (
-    <Link href={`/product/${product.slug}`} className="block h-full group">
-      <div className="bg-card text-foreground rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+    <Link href={`/product/${product.slug}`} className="block h-full group min-w-0">
+      <div className="bg-card text-foreground rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col min-w-0">
         {/* Product Image */}
         <div className="relative aspect-square overflow-hidden bg-muted/30">
           <img
@@ -169,17 +169,17 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
         </div>
 
         {/* Product Info */}
-        <div className="p-4 flex-1 flex flex-col">
-          <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors duration-200">
+        <div className="p-4 flex-1 flex flex-col min-w-0">
+          <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors duration-200 min-w-0">
             {product.name}
           </h3>
           
-          <div className="flex items-center justify-between mt-auto">
-            <div className="font-bold text-primary">
+          <div className="flex items-center justify-between gap-2 mt-auto min-w-0">
+            <div className="font-bold text-primary min-w-0 overflow-hidden truncate">
               {getCurrencySymbol()}{(convertedPrice || Number(product.price)).toFixed(2)}
             </div>
             
-            <div className={`text-xs ${product.stock > 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+            <div className={`text-xs shrink-0 ${product.stock > 0 ? 'text-emerald-500' : 'text-destructive'}`}>
               {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
             </div>
           </div>
