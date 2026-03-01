@@ -188,11 +188,11 @@ function HomeContent() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-16 pb-16 bg-background">
+      <div className="flex flex-col gap-16 pb-16 bg-background w-full">
         {/* User Info Bar */}
         {user && (
           <div className="bg-primary text-primary-foreground p-4">
-            <div className="container mx-auto px-4 flex justify-between items-center">
+            <div className="container mx-auto px-4 max-w-[1400px] flex justify-between items-center">
               <div>
                 <span className="font-semibold">Welcome, {user.fullname}!</span>
                 <span className="ml-4 text-sm opacity-90">{user.email}</span>
@@ -212,10 +212,10 @@ function HomeContent() {
 
         <Hero />
 
-        <section className="container mx-auto px-4 -mt-8 relative z-20">
-          <div className="bg-card border border-border shadow-md rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="flex items-center gap-4 border-r border-border/50 last:border-0 pr-4">
-               <div className="bg-primary/10 p-3 rounded-full text-primary">
+        <section className="container mx-auto px-4 max-w-[1400px] -mt-8 relative z-20">
+          <div className="bg-card border border-border shadow-md rounded-lg p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="flex items-center gap-4 border-r border-border/50 last:border-r-0 pr-4 min-w-0">
+               <div className="bg-primary/10 p-3 rounded-full text-primary flex-shrink-0">
                  <Truck className="h-6 w-6" />
                </div>
                <div>
@@ -223,8 +223,8 @@ function HomeContent() {
                  <p className="text-xs text-muted-foreground">On all orders over kr 299</p>
                </div>
             </div>
-            <div className="flex items-center gap-4 border-r border-border/50 last:border-0 pr-4">
-               <div className="bg-primary/10 p-3 rounded-full text-primary">
+            <div className="flex items-center gap-4 border-r border-border/50 last:border-r-0 pr-4 min-w-0">
+               <div className="bg-primary/10 p-3 rounded-full text-primary flex-shrink-0">
                  <ShieldCheck className="h-6 w-6" />
                </div>
                <div>
@@ -232,8 +232,8 @@ function HomeContent() {
                  <p className="text-xs text-muted-foreground">Genuine parts warranty</p>
                </div>
             </div>
-            <div className="flex items-center gap-4 border-r border-border/50 last:border-0 pr-4">
-               <div className="bg-primary/10 p-3 rounded-full text-primary">
+            <div className="flex items-center gap-4 border-r border-border/50 last:border-r-0 pr-4 min-w-0">
+               <div className="bg-primary/10 p-3 rounded-full text-primary flex-shrink-0">
                  <RefreshCw className="h-6 w-6" />
                </div>
                <div>
@@ -241,8 +241,8 @@ function HomeContent() {
                  <p className="text-xs text-muted-foreground">Hassle-free exchanges</p>
                </div>
             </div>
-            <div className="flex items-center gap-4">
-               <div className="bg-primary/10 p-3 rounded-full text-primary">
+            <div className="flex items-center gap-4 min-w-0">
+               <div className="bg-primary/10 p-3 rounded-full text-primary flex-shrink-0">
                  <Headphones className="h-6 w-6" />
                </div>
                <div>
@@ -253,7 +253,7 @@ function HomeContent() {
           </div>
         </section>
 
-        <section className="container mx-auto px-4">
+        <section className="container mx-auto px-4 max-w-[1400px]">
           <div className="flex items-center justify-center mb-10">
             <h2 className="text-3xl font-bold font-heading italic uppercase text-foreground relative inline-block">
               Featured <span className="text-primary">Categories</span>
@@ -261,13 +261,13 @@ function HomeContent() {
             </h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full min-w-0">
             {loading ? (
               // Loading skeleton
               Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg">
-                  <div className="w-24 h-24 bg-muted animate-pulse rounded-md"></div>
-                  <div className="flex flex-col justify-between flex-grow">
+                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg min-w-0 overflow-hidden">
+                  <div className="w-24 h-24 flex-shrink-0 bg-muted animate-pulse rounded-md"></div>
+                  <div className="flex flex-col justify-between flex-grow min-w-0">
                     <div>
                       <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
                       <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
@@ -278,11 +278,11 @@ function HomeContent() {
               ))
             ) : isError ? (
               Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg">
+                <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg min-w-0 overflow-hidden">
                   <div className="w-24 h-24 bg-muted/20 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
                     <Package className="h-8 w-8 text-primary" />
                   </div>
-                  <div className="flex flex-col justify-between items-start flex-grow">
+                  <div className="flex flex-col justify-between items-start flex-grow min-w-0">
                     <div>
                       <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1">Category</h3>
                       <span className="text-xs text-muted-foreground">0 Products</span>
@@ -295,15 +295,15 @@ function HomeContent() {
               ))
             ) : (
               (featuredCategoriesResponse?.data ?? []).map((cat: Category) => (
-                <div key={cat.id} className="flex gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                <div key={cat.id} className="flex gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-lg transition-all duration-300 group cursor-pointer min-w-0 overflow-hidden">
                    <div className="w-24 h-24 bg-muted/20 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-300">
                      <div className="transition-transform duration-300 group-hover:scale-110">
                        {getCategoryIcon(cat.name)}
                      </div>
                    </div>
-                   <div className="flex flex-col justify-between items-start flex-grow">
-                     <div>
-                       <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1 group-hover:text-primary transition-colors duration-300">{cat.name}</h3>
+                   <div className="flex flex-col justify-between items-start flex-grow min-w-0">
+                     <div className="min-w-0 w-full">
+                       <h3 className="font-bold font-heading uppercase text-lg leading-tight mb-1 group-hover:text-primary transition-colors duration-300 line-clamp-2" title={cat.name}>{cat.name}</h3>
                        <span className="text-xs text-muted-foreground group-hover:text-primary/80 transition-colors duration-300">{cat.productCount} Products</span>
                      </div>
                      <Link href={`/shops?category=${cat.id}`}>
@@ -380,7 +380,7 @@ function HomeContent() {
           </div>
         </section>
 
-        <section className="container mx-auto px-4">
+        <section className="container mx-auto px-4 max-w-[1400px]">
           <div className="flex items-center justify-center mb-10">
             <h2 className="text-3xl font-bold font-heading italic uppercase text-foreground relative inline-block">
               New <span className="text-primary">Arrival</span> Products
@@ -430,7 +430,7 @@ function HomeContent() {
           )}
         </section>
 
-        <section className="container mx-auto px-4">
+        <section className="container mx-auto px-4 max-w-[1400px]">
           <div className="flex items-center justify-center mb-10">
             <h2 className="text-3xl font-bold font-heading italic uppercase text-foreground relative inline-block">
               Best Of <span className="text-primary">The Day</span>
@@ -501,7 +501,7 @@ function HomeContent() {
         </section>
 
         <section className="w-full">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-4 max-w-[1400px]">
             <Link href="/categories" className="group block overflow-hidden rounded-lg border border-border bg-card">
               <div className="relative h-[180px] sm:h-[220px] md:h-[260px]">
                 <img
@@ -537,7 +537,7 @@ function HomeContent() {
         </section>
 
         <section className="w-full">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-4 max-w-[1400px]">
             <div className="overflow-hidden rounded-lg border border-border bg-card shadow-lg">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="p-8 sm:p-10 flex flex-col justify-center bg-background">
@@ -577,7 +577,7 @@ function HomeContent() {
         </section>
 
         <section className="w-full">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-4 max-w-[1400px]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Link href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
                 <div className="relative aspect-[16/7]">
@@ -649,7 +649,7 @@ function HomeContent() {
         </section>
 
         <section className="w-full">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-4 max-w-[1400px]">
             <div className="bg-background border-y border-border py-6">
               <div className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Shop By Brands
@@ -675,7 +675,7 @@ function HomeContent() {
         </section>
 
         <section className="w-full">
-          <div className="container mx-auto px-4 py-12">
+          <div className="container mx-auto px-4 max-w-[1400px] py-12">
             <div className="flex items-center justify-center mb-10">
               <h2 className="text-3xl font-bold font-heading italic uppercase text-foreground relative inline-block">
                 From Our <span className="text-primary">Blogs</span>
