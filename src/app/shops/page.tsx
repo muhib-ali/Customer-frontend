@@ -507,8 +507,11 @@ function ShopsPageContent() {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border">
-                <h3 className="text-xl font-bold mb-2">No products found</h3>
-                <p className="text-muted-foreground">Try adjusting your filters or search criteria.</p>
+                <img
+                  src="/images/no-product-found.svg"
+                  alt="No product found"
+                  className="max-h-80 w-auto object-contain"
+                />
               </div>
             )}
           </div>

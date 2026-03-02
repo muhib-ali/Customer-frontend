@@ -16,6 +16,7 @@ import { useProductById } from "@/services/products";
 import { useProductReviews, useProductReviewSummary, useMyReviews, type Review, myReviewsQueryKey } from "@/services/reviews";
 import { Star } from "lucide-react";
 import { useCurrency } from "@/contexts/currency-context";
+import { getVideoEmbedUrl, getVideoThumbnailUrl } from "@/lib/youtube";
 
 export default function ProductPage() {
   const params = useParams();
@@ -150,7 +151,6 @@ export default function ProductPage() {
     const normalize = (u: string) => u.trim();
     const seen = new Set<string>();
 
-    // Always show featured image first (default)
     if (product?.product_img_url) {
       const u = normalize(product.product_img_url);
       if (!seen.has(u)) {
@@ -159,7 +159,6 @@ export default function ProductPage() {
       }
     }
 
-    // Add video if exists
     if (product?.product_video_url) {
       const u = normalize(product.product_video_url);
       if (!seen.has(u)) {
@@ -168,7 +167,6 @@ export default function ProductPage() {
       }
     }
 
-    // Add gallery images (excluding featured duplicates)
     if (product?.images?.length) {
       for (const img of product.images) {
         if (img?.url) {
@@ -376,14 +374,27 @@ export default function ProductPage() {
           <div className="flex flex-col gap-2">
             <div className="relative h-[360px] sm:h-[420px] lg:h-[460px] border border-border bg-muted/10 overflow-hidden group">
               {mainMediaType === 'video' ? (
-                <video
-                  src={mainMedia}
-                  controls
-                  className="absolute inset-0 w-full h-full object-cover"
-                  poster={imageUrls[0] || ''}
-                >
-                  Your browser does not support the video tag.
-                </video>
+                (() => {
+                  const embedUrl = getVideoEmbedUrl(mainMedia);
+                  return embedUrl ? (
+                  <iframe
+                    src={embedUrl}
+                    title="Product video"
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={mainMedia}
+                    controls
+                    className="absolute inset-0 w-full h-full object-cover"
+                    poster={imageUrls[0] || ''}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                );
+                })()
               ) : (
                 <img 
                   src={mainMedia} 
@@ -409,9 +420,13 @@ export default function ProductPage() {
                     {media.type === 'video' ? (
                       <div className="relative w-full h-full">
                         <img 
-                          src={imageUrls[0] || ''} 
+                          src={getVideoThumbnailUrl(media.url) || imageUrls[0] || placeholderMedia} 
                           alt="Video thumbnail" 
-                          className={`w-full h-full object-cover ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                          className={`w-full h-full object-cover ${isActive ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
+                          onError={(e) => {
+                            if (e.currentTarget.src !== placeholderMedia && e.currentTarget.src !== imageUrls[0])
+                              e.currentTarget.src = imageUrls[0] || placeholderMedia;
+                          }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="bg-black/50 rounded-full p-2">
