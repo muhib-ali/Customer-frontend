@@ -141,6 +141,13 @@
   }
 }
 
+/* Prevent grid children from overflowing in Edge (flex/grid min-width: auto) */
+@layer utilities {
+  .grid > * {
+    min-width: 0;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
