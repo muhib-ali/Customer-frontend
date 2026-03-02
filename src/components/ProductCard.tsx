@@ -16,6 +16,7 @@ import { useWishlistStore } from "@/stores/useWishlistStore";
 import { useToast } from "@/hooks/use-toast";
 import { useProductReviewSummary } from "@/services/reviews";
 import { useCurrency } from "@/contexts/currency-context";
+import { normalizeProductImageUrl } from "@/config/api";
 
 interface ProductCardProps {
   product: Product;
@@ -241,7 +242,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   const noImageSrc = "/images/no-image.svg";
-  const imageSrc = product.image || noImageSrc;
+  const imageSrc = product.image
+    ? normalizeProductImageUrl(product.image) || noImageSrc
+    : noImageSrc;
   const [imageFallback, setImageFallback] = useState(imageSrc);
 
   return (

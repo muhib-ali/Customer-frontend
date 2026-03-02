@@ -12,6 +12,7 @@ import { useWishlistStore } from "@/stores/useWishlistStore";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/contexts/currency-context";
 import { useEffect, useState } from "react";
+import { normalizeProductImageUrl } from "@/config/api";
 
 interface WishlistProductCardProps {
   product: {
@@ -130,7 +131,9 @@ export default function WishlistProductCard({ product }: WishlistProductCardProp
   };
 
   const noImageSrc = "/images/no-image.svg";
-  const imageSrc = product.image || noImageSrc;
+  const imageSrc = product.image
+    ? normalizeProductImageUrl(product.image) || noImageSrc
+    : noImageSrc;
   const [imageFallback, setImageFallback] = useState(imageSrc);
 
   return (
