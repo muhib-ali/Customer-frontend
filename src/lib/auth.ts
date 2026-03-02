@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import axios from "axios"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+const API_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export const authOptions = {
   providers: [
