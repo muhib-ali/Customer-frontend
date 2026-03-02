@@ -372,7 +372,7 @@ export default function ProductPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           <div className="flex flex-col gap-2">
-            <div className="relative h-[360px] sm:h-[420px] lg:h-[460px] border border-border bg-muted/10 overflow-hidden group">
+            <div className="relative h-[360px] sm:h-[420px] lg:h-[460px] border border-border bg-white overflow-hidden group cursor-zoom-in">
               {mainMediaType === 'video' ? (
                 (() => {
                   const embedUrl = getVideoEmbedUrl(mainMedia);
@@ -388,7 +388,7 @@ export default function ProductPage() {
                   <video
                     src={mainMedia}
                     controls
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-contain"
                     poster={imageUrls[0] || ''}
                   >
                     Your browser does not support the video tag.
@@ -399,7 +399,7 @@ export default function ProductPage() {
                 <img 
                   src={mainMedia} 
                   alt={product.title} 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="absolute inset-0 w-full h-full object-contain transition-transform duration-300 ease-out group-hover:scale-125"
                   onError={(e) => {
                     if (e.currentTarget.src !== placeholderMedia) {
                       e.currentTarget.src = placeholderMedia;

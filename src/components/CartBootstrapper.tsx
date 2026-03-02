@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { bootstrapCartOnce } from "@/services/cart/bootstrap";
-import { useCartStore } from "@/stores/useCartStore";
+import { useCartStore } from "@/stores/useCartStore"; 
 
 export default function CartBootstrapper() {
   const { data: session, status } = useSession();
