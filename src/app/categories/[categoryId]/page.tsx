@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { getCategoryIcon } from "@/lib/getCategoryIcon";
 import { useSubcategoriesByCategory, useCategoryById } from "@/services/categories";
 import RingLoader from "@/components/ui/ring-loader";
 
@@ -81,16 +82,21 @@ export default function CategorySubcategoriesPage() {
               className="group relative flex flex-col h-40 rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary hover:shadow-xl"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-lg font-heading font-bold uppercase text-primary">
-                  {sub.name}
-                </span>
+                <div className="rounded-lg bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary/20">
+                  {getCategoryIcon(sub.name)}
+                </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
-              {sub.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
-                  {sub.description}
-                </p>
-              )}
+              <div className="flex-1">
+                <h2 className="font-heading text-lg font-bold uppercase leading-tight text-primary">
+                  {sub.name}
+                </h2>
+                {sub.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+                    {sub.description}
+                  </p>
+                )}
+              </div>
             </Link>
           ))}
         </section>

@@ -60,7 +60,7 @@ export default function CategoriesPage() {
               className="group relative flex flex-col h-48 rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary hover:shadow-xl"
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="rounded-lg bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                <div className="rounded-lg bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary/20">
                   {getCategoryIcon(category.name)}
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
