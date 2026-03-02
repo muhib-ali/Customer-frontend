@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 // Use direct API URL for both development and production
 export const getApiUrl = (endpoint: string) => {
@@ -15,6 +15,6 @@ export function normalizeProductImageUrl(src: string | undefined | null): string
   if (!s) return '';
   if (s.startsWith('http://') || s.startsWith('https://')) return s;
   if (s.startsWith('/')) return s;
-  const base = API_URL.replace(/\/$/, '');
+  const base = API_URL?.replace(/\/$/, '');
   return `${base}/${s.replace(/^\//, '')}`;
 }

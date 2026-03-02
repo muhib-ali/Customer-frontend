@@ -242,25 +242,36 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   const noImageSrc = "/images/no-image.svg";
-  const imageSrc = product.image
+  const hasRealImage = !!product.image;
+  const imageSrc = hasRealImage
     ? normalizeProductImageUrl(product.image) || noImageSrc
     : noImageSrc;
   const [imageFallback, setImageFallback] = useState(imageSrc);
 
   return (
     <Link href={`/product/${product.id}`} className="block h-full group min-w-0">
-      <Card className="h-full bg-card border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col min-w-0">
-        <div className="relative aspect-square overflow-hidden bg-muted/20 p-4">
-          <Image 
-            src={imageFallback}
-            alt={product.name} 
-            fill
-            className="object-contain object-center transition-transform duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onError={() => {
-              if (imageFallback !== noImageSrc) setImageFallback(noImageSrc);
-            }}
-          />
+      <Card className="h-full border-border overflow-hidden rounded-lg hover:border-primary hover:shadow-lg transition-all duration-300 flex flex-col min-w-0">
+        <div className="relative aspect-square overflow-hidden bg-white">
+          {hasRealImage ? (
+            <Image 
+              src={imageFallback}
+              alt={product.name} 
+              fill
+              className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => {
+                if (imageFallback !== noImageSrc) setImageFallback(noImageSrc);
+              }}
+            />
+          ) : (
+            <Image
+              src={noImageSrc}
+              alt="No image available"
+              fill
+              className="object-contain object-center"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          )}
           {product.isNew && (
             <span className="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm">
               New Arrival

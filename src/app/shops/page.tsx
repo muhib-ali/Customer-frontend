@@ -37,10 +37,15 @@ function ShopsPageContent() {
   );
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
 
+  const scrollToTop = () => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Debounced filters state
   const [debouncedFilters, setDebouncedFilters] = useState<ProductFilters>({
     page: currentPage,
-    limit: 6,
+    limit: 12,
     category: selectedCategory !== 'all' ? selectedCategory : undefined,
     subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
     brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
@@ -53,7 +58,6 @@ function ShopsPageContent() {
   });
 
   const [isUpdatingFilters, setIsUpdatingFilters] = useState(false);
-  const categoriesScrollRef = useRef<HTMLDivElement>(null);
 
   // Debounce effect - wait 3 seconds after user stops changing filters
   useEffect(() => {
@@ -61,7 +65,7 @@ function ShopsPageContent() {
     const timer = setTimeout(() => {
       setDebouncedFilters({
         page: currentPage,
-        limit: 6,
+        limit: 12,
         category: selectedCategory !== 'all' ? selectedCategory : undefined,
         subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
         brand: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
@@ -184,58 +188,6 @@ function ShopsPageContent() {
             <span className="mx-2">/</span>
             <span className="text-primary">All Products</span>
           </div>
-        </div>
-
-        <div className="mb-6">
-          <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full">
-            <div className="relative flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0 rounded-full border-border bg-background hover:bg-muted"
-                onClick={() => {
-                  categoriesScrollRef.current?.scrollBy({ left: -200, behavior: "smooth" });
-                }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Previous categories</span>
-              </Button>
-              <div
-                ref={categoriesScrollRef}
-                className="flex-1 overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-thin"
-              >
-                <TabsList className="inline-flex w-max min-w-full justify-start gap-0 rounded-lg border border-border bg-muted/50 p-1">
-                  <TabsTrigger value="all" className="px-6 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    All Categories
-                  </TabsTrigger>
-                  {categoriesLoading ? (
-                    <span className="inline-flex items-center justify-center px-6 py-2 text-sm text-muted-foreground">
-                      Loading...
-                    </span>
-                  ) : (
-                    categories.map((cat: Category) => (
-                      <TabsTrigger key={cat.id} value={cat.id} className="px-6 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                        {cat.name}
-                      </TabsTrigger>
-                    ))
-                  )}
-                </TabsList>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0 rounded-full border-border bg-background hover:bg-muted"
-                onClick={() => {
-                  categoriesScrollRef.current?.scrollBy({ left: 200, behavior: "smooth" });
-                }}
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Next categories</span>
-              </Button>
-            </div>
-          </Tabs>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
@@ -459,7 +411,13 @@ function ShopsPageContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      onClick={() => {
+                        setCurrentPage(p => {
+                          const next = Math.max(1, p - 1);
+                          scrollToTop();
+                          return next;
+                        });
+                      }}
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4 mr-1" />
@@ -484,7 +442,10 @@ function ShopsPageContent() {
                             key={pageNum}
                             variant={currentPage === pageNum ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setCurrentPage(pageNum)}
+                              onClick={() => {
+                                setCurrentPage(pageNum);
+                                scrollToTop();
+                              }}
                             className="w-10"
                           >
                             {pageNum}
@@ -496,7 +457,13 @@ function ShopsPageContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                      onClick={() => {
+                        setCurrentPage(p => {
+                          const next = Math.min(pagination.totalPages, p + 1);
+                          scrollToTop();
+                          return next;
+                        });
+                      }}
                       disabled={currentPage === pagination.totalPages}
                     >
                       Next
