@@ -88,7 +88,7 @@ export default function CategorySubcategoriesPage() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
               <div className="flex-1">
-                <h2 className="font-heading text-lg font-bold uppercase leading-tight text-primary">
+                <h2 className="font-heading text-lg font-bold uppercase leading-tight text-white">
                   {sub.name}
                 </h2>
                 {sub.description && (
