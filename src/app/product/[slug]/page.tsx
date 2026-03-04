@@ -388,7 +388,7 @@ export default function ProductPage() {
                 <img 
                   src={mainMedia} 
                   alt={product.title} 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="absolute inset-0 w-full h-full object-cover"
                   onError={(e) => {
                     if (e.currentTarget.src !== placeholderMedia) {
                       e.currentTarget.src = placeholderMedia;
