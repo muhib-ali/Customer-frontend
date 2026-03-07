@@ -15,11 +15,13 @@ import { useCurrency } from "@/contexts/currency-context";
 import { useBrands } from "@/services/brands";
 import { getAllBlogs, type BlogItem } from "@/services/blogs";
 import { useState, useEffect } from "react";
+import { useCms, CmsSection } from "@/services/cms";
 
 function HomeContent() {
   const { user, logout } = useAuth();
   const { convertAmount, getCurrencySymbol, getCurrencyCode } = useCurrency();
   const [convertedBestPrices, setConvertedBestPrices] = useState<{ [key: string]: number }>({});
+  const { data: cmsData, isLoading: cmsLoading } = useCms();
 
   const {
     data: featuredCategoriesResponse,
@@ -47,6 +49,7 @@ function HomeContent() {
   const [blogPosts, setBlogPosts] = useState<BlogItem[]>([]);
   const [blogsLoading, setBlogsLoading] = useState(true);
   const [blogsError, setBlogsError] = useState<string | null>(null);
+  
   useEffect(() => {
     let cancelled = false;
     const fetchBlogs = async () => {
@@ -66,7 +69,6 @@ function HomeContent() {
     return () => { cancelled = true; };
   }, []);
 
-  // Convert best products prices when currency changes
   useEffect(() => {
     const convertBestProductsPrices = async () => {
       if (!bestProductsResponse?.data) return;
@@ -93,13 +95,10 @@ function HomeContent() {
     convertBestProductsPrices();
   }, [bestProductsResponse, convertAmount, getCurrencyCode]);
 
-  // Dynamic icon mapping for categories
   const getCategoryIcon = (categoryName: string) => {
     const name = categoryName.toLowerCase();
     
-    // Comprehensive icon mapping
     const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
-      // Electronics
       'electronics': Monitor,
       'phones': Smartphone,
       'smartphones': Smartphone,
@@ -112,8 +111,6 @@ function HomeContent() {
       'audio': HeadphonesIcon,
       'cpu': Cpu,
       'computer': Monitor,
-      
-      // Fashion & Clothing
       'fashion': Shirt,
       'clothing': Shirt,
       'shirts': Shirt,
@@ -122,74 +119,62 @@ function HomeContent() {
       'accessories': Package,
       'jewelry': Package,
       'bags': Package,
-      
-      // Home & Garden
       'home': HomeIcon,
       'furniture': HomeIcon,
       'garden': HomeIcon,
       'kitchen': HomeIcon,
       'decor': HomeIcon,
       'appliances': Zap,
-      
-      // Sports & Fitness
       'sports': Dumbbell,
       'fitness': Dumbbell,
       'gym': Dumbbell,
       'exercise': Dumbbell,
       'outdoor': Car,
-      
-      // Tools & Hardware
       'tools': Hammer,
       'hardware': Wrench,
       'diy': Hammer,
       'repair': Wrench,
-      
-      // Baby & Kids
       'baby': Baby,
       'kids': Baby,
       'toys': Gamepad2,
-      
-      // Books & Media
       'books': Book,
       'media': Book,
       'education': Book,
       'music': Music,
       'entertainment': Gamepad2,
-      
-      // Food & Beverage
       'food': Coffee,
       'coffee': Coffee,
       'beverage': Coffee,
       'drinks': Coffee,
-      
-      // General fallbacks
       'general': Package,
       'miscellaneous': Package,
       'other': Package,
       'default': Package,
     };
     
-    // Try exact match first
     if (iconMap[name]) {
       const IconComponent = iconMap[name];
       return <IconComponent className="h-8 w-8 text-primary" />;
     }
     
-    // Try partial match (contains)
     for (const [key, IconComponent] of Object.entries(iconMap)) {
       if (name.includes(key)) {
         return <IconComponent className="h-8 w-8 text-primary" />;
       }
     }
     
-    // Fallback to Package icon
     return <Package className="h-8 w-8 text-primary" />;
   };
+
+  // ✅ Match EXACT keys provided by API instead of guessing based on array index or subsections count
+  const cmsSection2 = cmsData?.find(section => section.section_key === 'section 2');
+  const cmsSubsectionCards = cmsSection2 && cmsSection2.subsections ? [cmsSection2] : [];
+
+  const section3Data = cmsData?.find(section => section.section_key === 'section 3');
 
   return (
     <Layout>
       <div className="flex flex-col gap-16 pb-16 bg-background">
-        {/* User Info Bar */}
         {user && (
           <div className="bg-primary text-primary-foreground p-4">
             <div className="container mx-auto px-4 flex justify-between items-center">
@@ -263,7 +248,6 @@ function HomeContent() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {loading ? (
-              // Loading skeleton
               Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="flex gap-4 p-4 bg-card border border-border rounded-lg">
                   <div className="w-24 h-24 bg-muted animate-pulse rounded-md"></div>
@@ -318,65 +302,118 @@ function HomeContent() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-            <Link href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
-              <div className="relative aspect-[16/7]">
-                <img
-                  src="/assets/generated_images/car_engine_bay_instagram_shot.png"
-                  alt="Mercedes Benz"
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/image_1765226772040.png";
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
-                <div className="absolute inset-0 p-6 flex flex-col justify-center">
-                  <div className="text-primary text-xs font-bold uppercase tracking-wider mb-2">Car Accessories</div>
-                  <h3 className="text-2xl md:text-3xl font-bold font-heading italic uppercase text-white leading-tight">
-                    Mercedes
-                    <br />
-                    Benz
-                  </h3>
-                  <p className="text-sm text-white/80 mt-2 max-w-sm">
-                    Premium aftermarket parts for European luxury performance.
-                  </p>
-                  <div className="mt-5">
-                    <Button className="h-9 px-4 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
-                      Shop Now
-                    </Button>
-                  </div>
+            {cmsLoading ? (
+              Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="group relative overflow-hidden rounded-lg border border-border bg-card animate-pulse">
+                  <div className="relative aspect-[16/7] bg-muted" />
                 </div>
-              </div>
-            </Link>
+              ))
+            ) : cmsSubsectionCards.length > 0 ? (
+              cmsSubsectionCards.map((section) => {
+                const subsectionsToShow = section.subsections?.slice(0, 2) || [];
+                return subsectionsToShow.map((subsection, idx) => (
+                  <Link key={subsection.id} href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="relative aspect-[16/7]">
+                      <img
+                        src={subsection.section_img_url || "/assets/image_1765226772040.png"}
+                        alt={subsection.title || subsection.label || "Product"}
+                        onError={(e) => {
+                          e.currentTarget.src = "/assets/image_1765226772040.png";
+                        }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-r ${idx === 0 ? 'from-black/80 via-black/50 to-black/20' : 'from-black/20 via-black/50 to-black/80'}`} />
+                      <div className={`absolute inset-0 p-6 flex flex-col justify-center ${idx !== 0 ? 'items-end text-right lg:text-right' : ''}`}>
+                        <div className="text-primary text-xs font-bold uppercase tracking-wider mb-2">
+                          {subsection.label || "Product Category"}
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-bold font-heading italic uppercase text-white leading-tight">
+                          {subsection.title?.split(' ').map((word, i) => (
+                            i === subsection.title!.split(' ').length - 1 ? (
+                              <span key={i}><br />{word}</span>
+                            ) : (
+                              <span key={i}>{word} </span>
+                            )
+                          )) || "Product"}
+                        </h3>
+                        {subsection.description && (
+                          <p className="text-sm text-white/80 mt-2 max-w-sm">
+                            {subsection.description}
+                          </p>
+                        )}
+                        <div className="mt-5">
+                          <Button className="h-9 px-4 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
+                            Shop Now
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ));
+              })
+            ) : (
+              <>
+                <Link href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
+                  <div className="relative aspect-[16/7]">
+                    <img
+                      src="/assets/generated_images/car_engine_bay_instagram_shot.png"
+                      alt="Mercedes Benz"
+                      onError={(e) => {
+                        e.currentTarget.src = "/assets/image_1765226772040.png";
+                      }}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+                    <div className="absolute inset-0 p-6 flex flex-col justify-center">
+                      <div className="text-primary text-xs font-bold uppercase tracking-wider mb-2">Car Accessories</div>
+                      <h3 className="text-2xl md:text-3xl font-bold font-heading italic uppercase text-white leading-tight">
+                        Mercedes
+                        <br />
+                        Benz
+                      </h3>
+                      <p className="text-sm text-white/80 mt-2 max-w-sm">
+                        Premium aftermarket parts for European luxury performance.
+                      </p>
+                      <div className="mt-5">
+                        <Button className="h-9 px-4 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
+                          Shop Now
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
 
-            <Link href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
-              <div className="relative aspect-[16/7]">
-                <img
-                  src="/assets/generated_images/racing_car_on_track_instagram_shot.png"
-                  alt="Custom Forged"
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/image_1765226772040.png";
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-black/50 to-black/80" />
-                <div className="absolute inset-0 p-6 flex flex-col justify-center items-start lg:items-end text-left lg:text-right">
-                  <div className="text-primary text-xs font-bold uppercase tracking-wider mb-2">Racing Parts</div>
-                  <h3 className="text-2xl md:text-3xl font-bold font-heading italic uppercase text-white leading-tight">
-                    Custom
-                    <br />
-                    Forged
-                  </h3>
-                  <p className="text-sm text-white/80 mt-2 max-w-sm">
-                    Lightweight racing wheels designed for the track.
-                  </p>
-                  <div className="mt-5">
-                    <Button className="h-9 px-4 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
-                      Shop Now
-                    </Button>
+                <Link href="/categories" className="group relative overflow-hidden rounded-lg border border-border bg-card">
+                  <div className="relative aspect-[16/7]">
+                    <img
+                      src="/assets/generated_images/racing_car_on_track_instagram_shot.png"
+                      alt="Custom Forged"
+                      onError={(e) => {
+                        e.currentTarget.src = "/assets/image_1765226772040.png";
+                      }}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-black/50 to-black/80" />
+                    <div className="absolute inset-0 p-6 flex flex-col justify-center items-start lg:items-end text-left lg:text-right">
+                      <div className="text-primary text-xs font-bold uppercase tracking-wider mb-2">Racing Parts</div>
+                      <h3 className="text-2xl md:text-3xl font-bold font-heading italic uppercase text-white leading-tight">
+                        Custom
+                        <br />
+                        Forged
+                      </h3>
+                      <p className="text-sm text-white/80 mt-2 max-w-sm">
+                        Lightweight racing wheels designed for the track.
+                      </p>
+                      <div className="mt-5">
+                        <Button className="h-9 px-4 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
+                          Shop Now
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </Link>
+                </Link>
+              </>
+            )}
           </div>
         </section>
 
@@ -411,7 +448,7 @@ function HomeContent() {
                   product={{
                     id: product.id,
                     name: product.title,
-                    slug: product.id, // Using id as slug since slug field doesn't exist in database
+                    slug: product.id,
                     image: product.images?.[0]?.url || product.product_img_url || '',
                     price: Number(product.price),
                     stock: product.stock_quantity,
@@ -502,37 +539,79 @@ function HomeContent() {
 
         <section className="w-full">
           <div className="container mx-auto px-4">
-            <Link href="/categories" className="group block overflow-hidden rounded-lg border border-border bg-card">
-              <div className="relative h-[180px] sm:h-[220px] md:h-[260px]">
-                <img
-                  src="/assets/generated_images/racing_car_on_track_instagram_shot.png"
-                  alt="Built for Speed"
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/image_1765226772040.png";
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/55" />
+            {cmsLoading ? (
+              <div className="animate-pulse rounded-lg border border-border bg-card h-[260px]" />
+            ) : section3Data ? (
+              <Link href="/categories" className="group block overflow-hidden rounded-lg border border-border bg-card">
+                <div className="relative h-[180px] sm:h-[220px] md:h-[260px]">
+                  {section3Data.section_img_url ? (
+                    <img
+                      src={section3Data.section_img_url}
+                      alt={section3Data.title || section3Data.section_key}
+                      onError={(e) => {
+                        e.currentTarget.src = "/assets/image_1765226772040.png";
+                      }}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary to-primary/50" />
+                  )}
+                  <div className="absolute inset-0 bg-black/55" />
 
-                <div className="absolute inset-0 flex items-center justify-center text-center">
-                  <div className="w-full px-6 sm:px-10">
-                    <div className="max-w-2xl mx-auto">
-                      <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading italic uppercase text-white leading-tight">
-                        Built For <span className="text-primary">Speed</span>
-                      </h3>
-                      <p className="text-sm sm:text-base text-white/80 mt-2">
-                        We supply the highest quality performance parts for serious enthusiasts and professional racing teams.
-                      </p>
-                      <div className="mt-6 flex justify-center">
-                        <Button className="h-10 px-6 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
-                          Upgrade Your Build
-                        </Button>
+                  <div className="absolute inset-0 flex items-center justify-center text-center">
+                    <div className="w-full px-6 sm:px-10">
+                      <div className="max-w-2xl mx-auto">
+                        <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading italic uppercase text-white leading-tight">
+                          {section3Data.title || section3Data.section_key}
+                        </h3>
+                        {section3Data.description && (
+                          <p className="text-sm sm:text-base text-white/80 mt-2">
+                            {section3Data.description}
+                          </p>
+                        )}
+                        <div className="mt-6 flex justify-center">
+                          <Button className="h-10 px-6 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
+                            Upgrade Your Build
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            ) : (
+              <Link href="/categories" className="group block overflow-hidden rounded-lg border border-border bg-card">
+                <div className="relative h-[180px] sm:h-[220px] md:h-[260px]">
+                  <img
+                    src="/assets/generated_images/racing_car_on_track_instagram_shot.png"
+                    alt="Built for Speed"
+                    onError={(e) => {
+                      e.currentTarget.src = "/assets/image_1765226772040.png";
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/55" />
+
+                  <div className="absolute inset-0 flex items-center justify-center text-center">
+                    <div className="w-full px-6 sm:px-10">
+                      <div className="max-w-2xl mx-auto">
+                        <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading italic uppercase text-white leading-tight">
+                          Built For <span className="text-primary">Speed</span>
+                        </h3>
+                        <p className="text-sm sm:text-base text-white/80 mt-2">
+                          We supply the highest quality performance parts for serious enthusiasts and professional racing teams.
+                        </p>
+                        <div className="mt-6 flex justify-center">
+                          <Button className="h-10 px-6 rounded-sm font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90">
+                            Upgrade Your Build
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )}
           </div>
         </section>
 

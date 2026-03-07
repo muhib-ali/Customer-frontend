@@ -5,26 +5,47 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { heroSlides } from "@/data/mockData";
 import Link from "next/link";
+import { useCms } from "@/services/cms";
 
 export default function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  
+  const { data: cmsData, isLoading: cmsLoading } = useCms();
+  
+  // ✅ SECTION 1 (Hero section)
+  // [CHANGES MADE HERE]: Pehle index 0 aur no subsections par match kar raha tha, jiski waja se galat image arhi thi.
+  // Ab specific 'section1' key ke zariye sirf section 1 ki hi image uthayega.
+  const cmsHeroSection = cmsData?.find((section) => 
+    section.section_key === 'section1' // Backend API response mein 'section1' araha hai (without hyphen)
+  );
+  
+  // ✅ CMS image use karo agar available hai
+  const heroSlidesWithCMS = heroSlides.map((slide, index) => {
+    if (index === 0 && cmsHeroSection?.section_img_url) {
+      return {
+        ...slide,
+        image: cmsHeroSection.section_img_url
+      };
+    }
+    return slide;
+  });
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    setCurrentSlide((prev) => (prev + 1) % heroSlidesWithCMS.length);
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+    setCurrentSlide((prev) => (prev - 1 + heroSlidesWithCMS.length) % heroSlidesWithCMS.length);
   };
 
   useEffect(() => {
     const timer = setInterval(nextSlide, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroSlidesWithCMS.length]);
 
   return (
     <div className="relative w-full h-[600px] bg-black overflow-hidden group">
-      {heroSlides.map((slide, index) => (
+      {heroSlidesWithCMS.map((slide, index) => (
         <div 
           key={slide.id}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
@@ -34,6 +55,9 @@ export default function Hero() {
               src={slide.image} 
               alt={slide.title} 
               className="w-full h-full object-cover opacity-60"
+              onError={(e) => {
+                e.currentTarget.src = heroSlides[0].image;
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
           </div>
@@ -78,7 +102,7 @@ export default function Hero() {
       </div>
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-        {heroSlides.map((_, index) => (
+        {heroSlidesWithCMS.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
